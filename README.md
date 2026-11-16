@@ -4,19 +4,19 @@ Digii Deadlines brings upcoming and past assignments from [SNUC DigiiCampus](htt
 
 ## Choose a download
 
-Choose the v1.5.0 ZIP for your browser below. Chrome and Edge share one download. The other builds use different files to open the dashboard in each browser.
+Choose the v1.5.0 ZIP for your browser below. Chrome, Edge, and Brave share the native side-panel build.
 
 | Browser | Package | Dashboard |
 | --- | --- | --- |
 | Chrome desktop | [Chromium ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-chromium-v1.5.0.zip) | Side panel |
 | Microsoft Edge desktop | [Chromium ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-chromium-v1.5.0.zip) | Side panel |
-| Brave desktop | [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip) | Dashboard tab |
+| Brave desktop | [Chromium ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-chromium-v1.5.0.zip) | Side panel |
 | Opera desktop | [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip) | Dashboard tab |
 | Vivaldi and compatible Chromium desktop browsers | [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip) | Dashboard tab |
 | Firefox 140+ desktop | [Firefox ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-firefox-v1.5.0.zip) | Sidebar with a tab fallback. Temporary installation instructions below. |
 | Safari on Mac | [Double-click installer from the repository](#safari-on-mac) | Dashboard tab |
 
-The desktop Chromium builds need a browser that supports Manifest V3 extensions. Use a current version of Chrome or Edge for the native side panel. The portable build uses a dashboard tab for browsers that support Chromium extensions but have different side-panel APIs. Safari needs a separate macOS build as described below.
+The desktop Chromium builds need a browser that supports Manifest V3 extensions. Use a current version of Chrome, Edge, or Brave for the native side panel. The portable build uses a dashboard tab for browsers that support Chromium extensions but have different side-panel APIs. Safari needs a separate macOS build as described below.
 
 ## Install by browser
 
@@ -42,10 +42,12 @@ The desktop Chromium builds need a browser that supports Manifest V3 extensions.
 
 ### Brave
 
-1. Download and extract the [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip).
+1. Download and extract the [Chromium ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-chromium-v1.5.0.zip).
 2. Enter `brave://extensions` in the address bar and turn on **Developer mode**.
 3. Click **Load unpacked** and select the extracted folder containing `manifest.json`.
-4. Open or reload SNUC DigiiCampus and sign in. Click **Digii Deadlines** in the browser's Extensions menu to open the dashboard tab.
+4. Open or reload SNUC DigiiCampus and sign in. Click **Digii Deadlines** in the browser's Extensions menu to open the side panel.
+
+If you previously installed the Portable ZIP, disable that copy on the Extensions page so only the side-panel build is active. [Brave’s side-panel support](https://github.com/brave/brave-browser/issues/31334)
 
 ### Opera
 
