@@ -4,14 +4,17 @@ Digii Deadlines brings upcoming and past assignments from [SNUC DigiiCampus](htt
 
 ## Choose a download
 
-Download the ZIP for your browser from the project's [GitHub Releases](https://github.com/gliminmorais/digii-deadlines/releases), when available, or [build the ZIPs yourself](#build-from-source).
+Choose the v1.5.0 ZIP for your browser below. Chrome and Edge share one download. The other builds use different files to open the dashboard in each browser.
 
 | Browser | Package | Dashboard |
 | --- | --- | --- |
-| Chrome and Edge desktop | `Digii-Deadlines-chromium-v1.5.0.zip` | Native side panel |
-| Brave, Opera, Vivaldi, or another compatible Chromium desktop browser | `Digii-Deadlines-portable-v1.5.0.zip` | Dashboard tab |
-| Firefox 140+ desktop | `Digii-Deadlines-firefox-v1.5.0.zip` | Native sidebar with a dashboard tab fallback |
-| Safari | `Digii-Deadlines-safari-v1.5.0.zip` | Dashboard tab after Apple packaging |
+| Chrome desktop | [Chromium ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-chromium-v1.5.0.zip) | Side panel |
+| Microsoft Edge desktop | [Chromium ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-chromium-v1.5.0.zip) | Side panel |
+| Brave desktop | [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip) | Dashboard tab |
+| Opera desktop | [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip) | Dashboard tab |
+| Vivaldi and compatible Chromium desktop browsers | [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip) | Dashboard tab |
+| Firefox 140+ desktop | [Firefox ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-firefox-v1.5.0.zip) | Sidebar with a tab fallback. Temporary installation instructions below. |
+| Safari | [Safari developer resources](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-safari-v1.5.0.zip) | Dashboard tab after building and enabling the Safari extension |
 
 The desktop Chromium builds need a browser that supports Manifest V3 extensions. Use a current version of Chrome or Edge for the native side panel. The portable build uses a dashboard tab for browsers that support Chromium extensions but have different side-panel APIs. Safari resources need conversion and testing on Apple platforms. Mobile browsers and browsers without compatible extension support are outside this release's verified scope.
 
@@ -19,6 +22,8 @@ The desktop Chromium builds need a browser that supports Manifest V3 extensions.
 
 1. Extract your ZIP and find the folder containing `manifest.json`.
 2. Open your browser's extensions page. In Chrome, open **⋮ → Extensions → Manage extensions** or visit `chrome://extensions`. In Edge, open `edge://extensions`. In other Chromium browsers, open **Manage extensions** in the browser menu.
+
+   In Brave use `brave://extensions`, in Opera use `opera:extensions`, and in Vivaldi use `vivaldi://extensions`.
 
    <img src="docs/screenshots/manage-extensions.png" alt="Chrome menu with Extensions and Manage extensions open" width="420">
 
@@ -35,15 +40,23 @@ To update an unpacked installation, extract the new ZIP into the folder you prev
 
 On desktop, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose the extracted build's `manifest.json`. Open or reload DigiiCampus and click the extension's toolbar button to open the sidebar. The temporary installation expires when Firefox restarts. For regular installation, distribute a version signed by Mozilla. On Firefox for Android, the build is configured to open a dashboard tab and still needs device testing and signing. [Temporary installation guide](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) · [Mozilla signing and distribution](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/)
 
-## Package for Safari
+## Safari on Mac, iPhone, and iPad
 
-The Safari ZIP contains WebExtension resources. On a Mac with Xcode, extract the ZIP and run the following command with the path to the folder containing `manifest.json`.
+Safari users need an Apple app that contains the extension. The Safari ZIP supplies the files for building that app. A ready-to-install Safari app has yet to be built, signed, or tested.
+
+On a Mac with Xcode, extract the Safari ZIP and run the following command with the path to the folder containing `manifest.json`.
 
 ```sh
 xcrun safari-web-extension-packager /path/to/extracted/safari
 ```
 
-On older Xcode versions the command is `safari-web-extension-converter`. Build and test the generated app in Xcode, enable its extension in Safari, and grant it access to the SNUC DigiiCampus site. Apple also offers web-based packaging in App Store Connect for developers working without a Mac. Public distribution uses Apple's app packaging and signing process. [Apple packaging guide](https://developer.apple.com/documentation/safariservices/packaging-a-web-extension-for-safari) · [Apple distribution guide](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension)
+On older Xcode versions, use `safari-web-extension-converter`. Build and run the generated app for the Apple platform you want to support. Then enable Digii Deadlines in Safari's Extensions settings, grant access to SNUC DigiiCampus, and test the dashboard with a signed-in tab.
+
+Developers on Windows can start packaging in App Store Connect. Sharing the Safari build with others still requires Apple's signing and distribution process and testing on the intended Mac, iPhone, or iPad. [Apple packaging guide](https://developer.apple.com/documentation/safariservices/packaging-a-web-extension-for-safari) · [Apple distribution guide](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension)
+
+## Mobile browsers
+
+Use the desktop downloads on desktop browsers. Firefox for Android needs a signed build and device testing. Safari on iPhone and iPad needs the Apple app described above. Browsers without compatible extension support cannot run this dashboard against their DigiiCampus session.
 
 ## Use the dashboard
 
@@ -64,7 +77,6 @@ node scripts/build.mjs
 
 The script writes four unpacked folders and four ZIPs to `dist/`. The packages share the same dashboard and DigiiCampus code. Browser-specific settings live in `manifest.json` and `manifests/`. Each ZIP contains the extension runtime files with `manifest.json` at the ZIP root. The install ZIPs exclude the README and screenshots. Run `node --test` to check the dashboard and sync behavior with simulated portal data.
 
-To share the builds, push the source to GitHub, then attach the generated ZIPs to a release as assets. The build workflow also uploads ZIPs to GitHub Actions for review. Chrome and Edge users can load the unpacked build from a release asset. Firefox users can test temporarily or use a signed add-on once available. Safari users need the packaged app. [GitHub release assets](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
+The build workflow uploads ZIPs to GitHub Actions for review. The public browser downloads above are checked into the repository under `downloads/v1.5.0/`.
 
 Made by [gliminmorais](https://gliminmorais.vercel.app/).
-
