@@ -14,7 +14,7 @@ Choose the v1.5.0 ZIP for your browser below. Chrome and Edge share one download
 | Opera desktop | [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip) | Dashboard tab |
 | Vivaldi and compatible Chromium desktop browsers | [Portable ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-portable-v1.5.0.zip) | Dashboard tab |
 | Firefox 140+ desktop | [Firefox ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-firefox-v1.5.0.zip) | Sidebar with a tab fallback. Temporary installation instructions below. |
-| Safari on Mac | [Safari developer resources](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-safari-v1.5.0.zip) | Dashboard tab after building and enabling the Safari extension |
+| Safari on Mac | [Double-click installer from the repository](#safari-on-mac) | Dashboard tab |
 
 The desktop Chromium builds need a browser that supports Manifest V3 extensions. Use a current version of Chrome or Edge for the native side panel. The portable build uses a dashboard tab for browsers that support Chromium extensions but have different side-panel APIs. Safari needs a separate macOS build as described below.
 
@@ -76,22 +76,14 @@ The temporary installation expires when Firefox restarts. A regular installation
 
 ### Safari on Mac
 
-The [Safari ZIP](https://github.com/gliminmorais/digii-deadlines/raw/main/downloads/v1.5.0/Digii-Deadlines-safari-v1.5.0.zip) contains developer resources. A ready-to-install Safari app has yet to be built, signed, or tested.
+1. On the GitHub repository page, choose **Code → Download ZIP**. On your Mac, extract the whole archive and open the extracted folder in Finder.
+2. Double-click **Install Digii Deadlines for Safari.command**. A Terminal window opens and runs the setup. Keep the launcher in the extracted folder with the rest of the project.
+3. If Xcode is missing, the launcher opens its Mac App Store listing. Click **Get** or **Install**, open Xcode, and complete Apple's first-launch prompts. Return to the setup window and press **Return** when asked.
+4. Wait for the launcher to build, install, and open **Digii Deadlines** from `~/Applications`.
+5. Open **Safari → Settings → Extensions**, enable **Digii Deadlines**, and allow it to access `snuc.digiicampus.com`. If the extension is missing from the list, turn on **Show features for web developers** in **Safari → Settings → Advanced**, then look for **Allow unsigned extensions** in Safari's developer settings. Safari may ask you to enable this option again after you quit.
+6. Sign in to SNUC DigiiCampus in Safari. Click the **Digii Deadlines** toolbar button to open the dashboard tab.
 
-1. Download and extract the Safari ZIP on a Mac with Xcode.
-2. Run the following command with the path to the folder containing `manifest.json`:
-
-   ```sh
-   xcrun safari-web-extension-packager /path/to/extracted/safari
-   ```
-
-   On older Xcode versions, use `safari-web-extension-converter`.
-
-3. In Xcode, build and run the generated macOS app.
-4. In **Safari → Settings → Extensions**, enable **Digii Deadlines** and grant it access to SNUC DigiiCampus.
-5. Sign in to DigiiCampus in Safari and use the extension toolbar button to open the dashboard tab. Test the build before distributing it.
-
-Developers can also use Apple's web-based packaging in App Store Connect. Public distribution requires Apple's signing process. [Apple packaging guide](https://developer.apple.com/documentation/safariservices/packaging-a-web-extension-for-safari) · [Apple distribution guide](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension)
+The launcher builds a local copy on your Mac. An Apple-signed app for public distribution is still pending. [Apple’s Safari extension guide](https://developer.apple.com/documentation/safariservices/running-your-safari-web-extension) · [Apple’s distribution guide](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension)
 
 ## Use the dashboard
 
@@ -110,7 +102,7 @@ From the repository root, run this with Node.js 22 or newer.
 node scripts/build.mjs
 ```
 
-The script writes four unpacked folders and four ZIPs to `dist/`. The packages share the same dashboard and DigiiCampus code. Browser-specific settings live in `manifest.json` and `manifests/`. Each ZIP contains the extension runtime files with `manifest.json` at the ZIP root. The install ZIPs exclude the README and screenshots. Run `node --test` to check the dashboard and sync behavior with simulated portal data.
+The script writes four unpacked folders and four browser ZIPs to `dist/`. The packages share the same dashboard and DigiiCampus code. Browser-specific settings live in `manifest.json` and `manifests/`. Each ZIP contains the extension runtime files with `manifest.json` at the ZIP root. The install ZIPs exclude the README and screenshots. Run `node --test` to check the dashboard and sync behavior with simulated portal data.
 
 The build workflow uploads ZIPs to GitHub Actions for review. The public browser downloads above are checked into the repository under `downloads/v1.5.0/`.
 
