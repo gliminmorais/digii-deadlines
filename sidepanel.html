@@ -3,21 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Upcoming Deadlines</title>
-  <link rel="stylesheet" href="popup.css">
-  <script src="popup.js" defer></script>
+  <title>Digii Deadlines</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <script src="sidepanel.js" defer></script>
 </head>
 <body>
   <header>
     <div class="heading">
-      <p class="campus">SNUC · DigiiCampus</p>
-      <h1>Upcoming<br>Deadlines</h1>
+      <h1>Digii Deadlines</h1>
     </div>
     <button id="refresh" type="button" title="Refresh the dashboard" aria-label="Refresh the dashboard">↻</button>
   </header>
+  <nav class="views" aria-label="Assignment views">
+    <button id="upcoming-view" type="button" aria-pressed="true">Upcoming</button>
+    <button id="past-view" type="button" aria-pressed="false">Past Assignments</button>
+  </nav>
   <main>
     <p id="status" role="status">Checking your DigiiCampus tab…</p>
     <ol id="deadlines" aria-label="Assignment deadlines" hidden></ol>
+    <section id="history" aria-label="Past assignments by subject" hidden></section>
   </main>
   <footer>
     <a id="campus" href="https://snuc.digiicampus.com/" target="_blank" rel="noopener">Open DigiiCampus <span aria-hidden="true">↗</span></a>

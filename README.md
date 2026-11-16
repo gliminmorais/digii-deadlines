@@ -1,6 +1,6 @@
 # Digii Deadlines for Chrome
 
-Digii Deadlines shows upcoming assignments across your SNUC DigiiCampus courses in one Chrome popup.
+Digii Deadlines shows upcoming deadlines and past assignments across your SNUC DigiiCampus courses in Chrome’s side panel.
 
 ## Install in Chrome
 
@@ -24,15 +24,13 @@ Click **Load unpacked** near the top left. In the folder picker, select the extr
 
 ### 4. Open the dashboard
 
-Open or refresh [SNUC DigiiCampus](https://snuc.digiicampus.com/) and sign in. In Chrome, click the **Extensions** puzzle-piece icon and choose **Digii Deadlines**. Click the pin next to it if you want quick access from the toolbar.
-
-![Chrome Extensions menu showing the pin control next to an extension](https://developer.chrome.com/static/docs/extensions/get-started/tutorial/hello-world/image/pinning-extension-215cb97773ab6.png)
-
-The pinning screenshot shows an example extension. [Chrome’s local installation guide](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked)
+Open or refresh [SNUC DigiiCampus](https://snuc.digiicampus.com/) and sign in. In Chrome, click the **Extensions** puzzle-piece icon and choose **Digii Deadlines** to open the side panel. It can stay open while you browse. [Chrome’s local installation guide](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked)
 
 ## How it works
 
 The extension starts syncing when you open DigiiCampus while signed in. It reads your enrolled courses and upcoming assignments automatically. The dashboard shows unsubmitted assignments in due-date order and links to each assignment. Times are shown in IST. **Refresh** checks DigiiCampus again. If some courses are unavailable, the dashboard reports how many.
+
+**Upcoming** opens by default and sorts assignments by the nearest deadline. Open **Past Assignments** and expand a subject to see past and already-submitted work, submission status, and published marks when DigiiCampus supplies them. Assignment titles link back to the portal.
 
 The extension uses read-only requests to SNUC DigiiCampus with your existing browser session. It keeps the dashboard data in tab memory and uses no external services.
 

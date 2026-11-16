@@ -3,7 +3,9 @@
   const pageSize = 20;
   const cacheMs = 2 * 60 * 1000;
   const months = 'jan feb mar apr may jun jul aug sep oct nov dec'.split(' ');
-  let active;
+  const collections = new Map();
+  const upcoming = ['upcomingAssignments', 'totalUpcomingAssignments'];
+  const previous = ['previousAssignments', 'totalPreviousAssignments'];
 
   function session() {
     try {
@@ -51,41 +53,66 @@
     return { due: Date.parse(zoned ? date : date + '+05:30'), dateOnly };
   }
 
-  function assignment(row, course) {
+  function assignment(row, course, bucket, past) {
     if (!row || !/^\d+$/.test(row.id) || typeof row.name !== 'string' || !row.name.trim()) return;
-    if (row.isSubmitted === true || row.isGraded === true || row.dueDatePassed === true) return;
     const date = deadline(row.dueDate);
-    if (!Number.isFinite(date.due) || Math.abs(date.due) > 8.64e15) return;
+    const due = Number.isFinite(date.due) && Math.abs(date.due) <= 8.64e15 ? date.due : null;
+    const submitted = typeof row.isSubmitted === 'boolean' ? row.isSubmitted
+      : Boolean(row.submittedOn) ? true : null;
+    const evaluated = row.isGraded === true || row.hasFacultyEvaluated === true;
+    const finished = submitted === true || evaluated || row.dueDatePassed === true || (due !== null && due < Date.now());
+    if (past ? bucket === upcoming && !finished : finished || due === null) return;
     const label = course.courseName || row.courseName || course.className || row.className;
+    const score = value => typeof value === 'number' && Number.isFinite(value)
+      ? String(value) : typeof value === 'string' ? value.trim().slice(0, 40) : '';
     return {
       href: origin + '/#/classroom/' + course.id + '/student/assignment/' + row.id,
       title: row.name.trim().slice(0, 300),
       course: typeof label === 'string' ? label.trim().slice(0, 150) : '',
-      ...date
+      courseId: String(course.id),
+      due,
+      dateOnly: date.dateOnly,
+      submitted,
+      grade: evaluated && row.showGrade !== false ? score(row.grade) : '',
+      maximum: evaluated && row.showGrade !== false ? score(row.maximumMarks) : ''
     };
   }
 
   async function loadCourse(course, sync, items) {
-    const seen = new Set();
+    const buckets = (sync.past ? [upcoming, previous] : [upcoming]).map(spec => ({ spec, seen: new Set(), done: false }));
+    let incomplete = false;
     for (let page = 1; page <= 100; page++) {
       const payload = await getJson(
         '/rest/classes/' + course.id + '/users/' + sync.id + '/assignments?page=' + page + '&perPage=' + pageSize,
         sync
       );
-      const total = payload?.totalUpcomingAssignments;
-      const rows = payload?.res?.upcomingAssignments ?? payload?.upcomingAssignments;
-      if (total === 0 && (rows == null || rows.length === 0)) return;
-      if (!Array.isArray(rows)) throw new Error('Missing assignment list');
-      const previousSize = seen.size;
-      for (const row of rows) {
-        if (!row || !/^\d+$/.test(row.id)) continue;
-        seen.add(String(row.id));
-        const item = assignment(row, course);
-        if (item) items.set(item.href, item);
+      for (const bucket of buckets) {
+        if (bucket.done) continue;
+        const [listKey, totalKey] = bucket.spec;
+        const total = payload?.[totalKey];
+        const rows = payload?.res?.[listKey] ?? payload?.[listKey] ?? (total === 0 ? [] : null);
+        if (!Array.isArray(rows)) {
+          bucket.done = true;
+          incomplete = true;
+          continue;
+        }
+        const previousSize = bucket.seen.size;
+        for (const row of rows) {
+          if (!row || !/^\d+$/.test(row.id)) continue;
+          bucket.seen.add(String(row.id));
+          const item = assignment(row, course, bucket.spec, sync.past);
+          if (item) items.set(item.href, item);
+        }
+        bucket.done = Number.isInteger(total) ? bucket.seen.size >= total : rows.length === 0;
+        if (!bucket.done && bucket.seen.size === previousSize) {
+          bucket.done = true;
+          incomplete = true;
+        }
       }
-      if (Number.isInteger(total) && seen.size >= total) return;
-      if (!Number.isInteger(total) && rows.length === 0) return;
-      if (seen.size === previousSize) throw new Error('Assignment pagination stopped early');
+      if (buckets.every(bucket => bucket.done)) {
+        if (incomplete) throw new Error('Incomplete assignment history');
+        return;
+      }
     }
     throw new Error('Assignment pagination limit reached');
   }
@@ -117,18 +144,21 @@
     }
   }
 
-  function update(force = false) {
+  function update(force = false, past = false) {
     const user = session();
-    if (active && (active.token !== user?.token || active.id !== user?.id)) {
-      active.controller.abort();
-      active = undefined;
+    for (const [view, cached] of collections) {
+      if (cached.token !== user?.token || cached.id !== user?.id) {
+        cached.controller.abort();
+        collections.delete(view);
+      }
     }
     if (!user) return;
+    const active = collections.get(past);
     if (active?.pending) return active;
     if (active && !force && Date.now() - active.finished < cacheMs) return active;
 
-    const sync = { ...user, pending: true, controller: new AbortController() };
-    active = sync;
+    const sync = { ...user, past, pending: true, controller: new AbortController() };
+    collections.set(past, sync);
     sync.result = loadAll(sync).finally(() => {
       sync.pending = false;
       sync.finished = Date.now();
@@ -136,30 +166,32 @@
     return sync;
   }
 
-  async function read(force) {
-    const sync = update(force);
+  async function read(force, past) {
+    const sync = update(force, past);
     if (!sync) return { state: 'sign-in', items: [] };
     const result = await sync.result;
     const current = session();
-    if (active !== sync || current?.token !== sync.token || current.id !== sync.id) {
+    if (collections.get(past) !== sync || current?.token !== sync.token || current.id !== sync.id) {
       return { state: 'sign-in', items: [] };
     }
     return {
       ...result,
-      items: result.items.filter(item => item.due >= Date.now())
-        .sort((a, b) => a.due - b.due || a.title.localeCompare(b.title))
+      items: result.items.filter(item => past || item.due >= Date.now())
+        .sort((a, b) => (past ? (b.due ?? -Infinity) - (a.due ?? -Infinity) : a.due - b.due) ||
+          a.title.localeCompare(b.title))
     };
   }
 
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (message?.type !== 'read-deadlines') return;
-    read(message.refresh === true).then(respond, () => respond({ state: 'error', items: [] }));
+    read(message.refresh === true, message.past === true).then(respond, () => respond({ state: 'error', items: [] }));
     return true;
   });
 
   update();
   setInterval(() => {
     const current = session();
+    const active = collections.get(false);
     if (active?.token !== current?.token || active?.id !== current?.id) update();
   }, 3000);
 })();
