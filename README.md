@@ -1,10 +1,32 @@
 # Digii Deadlines for Chrome
 
-1. On GitHub, select **Code → Download ZIP**, then extract it. Keep the extracted folder somewhere you can find it later.
-2. In Chrome, open `chrome://extensions` and turn on **Developer mode**.
-3. Select **Load unpacked** and choose the extracted folder containing `manifest.json`.
-4. Reload your [SNUC DigiiCampus](https://snuc.digiicampus.com/) tab and sign in as usual.
-5. Open **Digii Deadlines** from Chrome's Extensions menu. Pin it to keep it on the toolbar.
+Digii Deadlines shows upcoming assignments across your SNUC DigiiCampus courses in one Chrome popup.
+
+## Install in Chrome
+
+### 1. Download and extract the extension
+
+On this repository page, select **Code → Download ZIP**. On Windows, right-click the downloaded ZIP, select **Extract All**, and open the extracted folder. Look for the folder containing `manifest.json`.
+
+### 2. Turn on Developer mode
+
+Open a new Chrome tab, type `chrome://extensions` in the address bar, and press **Enter**. Turn on the **Developer mode** switch in the top-right corner of the Extensions page. This is a setting inside Chrome, and local installation is free.
+
+![Chrome Extensions page with the Developer mode switch in the top-right corner and the Load unpacked button in the toolbar](https://developer.chrome.com/static/docs/extensions/get-started/tutorial/hello-world/image/extensions-page-e0d64d89a6acf.png)
+
+### 3. Load Digii Deadlines
+
+Click **Load unpacked** near the top left. In the folder picker, select the extracted folder containing `manifest.json` and click **Select Folder**. Check that the **Digii Deadlines** card appears on the Extensions page and its switch is on.
+
+### 4. Open the dashboard
+
+Open or refresh [SNUC DigiiCampus](https://snuc.digiicampus.com/) and sign in. In Chrome, click the **Extensions** puzzle-piece icon and choose **Digii Deadlines**. Click the pin next to it if you want quick access from the toolbar.
+
+![Chrome Extensions menu showing the pin control next to an extension](https://developer.chrome.com/static/docs/extensions/get-started/tutorial/hello-world/image/pinning-extension-215cb97773ab6.png)
+
+The screenshots show Chrome’s controls using an example extension. [Chrome’s local installation guide](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked)
+
+## How it works
 
 The extension starts syncing when you open DigiiCampus while signed in. It reads your enrolled courses and upcoming assignments automatically. The dashboard shows unsubmitted assignments in due-date order and links to each assignment. Times are shown in IST. **Refresh** checks DigiiCampus again. If some courses are unavailable, the dashboard reports how many.
 
