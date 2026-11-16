@@ -10,9 +10,13 @@ On this repository page, select **Code → Download ZIP**. On Windows, right-cli
 
 ### 2. Turn on Developer mode
 
-Open a new Chrome tab, type `chrome://extensions` in the address bar, and press **Enter**. Turn on the **Developer mode** switch in the top-right corner of the Extensions page. This is a setting inside Chrome, and local installation is free.
+In Chrome, open the **⋮** menu in the top-right corner and choose **Extensions → Manage extensions**. You can also type `chrome://extensions` in the address bar and press **Enter**.
 
-![Chrome Extensions page with the Developer mode switch in the top-right corner and the Load unpacked button in the toolbar](https://developer.chrome.com/static/docs/extensions/get-started/tutorial/hello-world/image/extensions-page-e0d64d89a6acf.png)
+![Chrome menu with Extensions → Manage extensions open](docs/screenshots/manage-extensions.png)
+
+On the Extensions page, turn on **Developer mode** in the top-right corner. The **Load unpacked** button appears near the top left. Local installation is free.
+
+![Chrome Extensions page with the Developer mode switch in the top-right corner and the Load unpacked button in the toolbar](docs/screenshots/developer-mode.png)
 
 ### 3. Load Digii Deadlines
 
@@ -24,7 +28,7 @@ Open or refresh [SNUC DigiiCampus](https://snuc.digiicampus.com/) and sign in. I
 
 ![Chrome Extensions menu showing the pin control next to an extension](https://developer.chrome.com/static/docs/extensions/get-started/tutorial/hello-world/image/pinning-extension-215cb97773ab6.png)
 
-The screenshots show Chrome’s controls using an example extension. [Chrome’s local installation guide](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked)
+The pinning screenshot shows an example extension. [Chrome’s local installation guide](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked)
 
 ## How it works
 
