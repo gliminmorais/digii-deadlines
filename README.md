@@ -12,7 +12,7 @@ On this repository page, select **Code → Download ZIP**. On Windows, right-cli
 
 In Chrome, open the **⋮** menu in the top-right corner and choose **Extensions → Manage extensions**. You can also type `chrome://extensions` in the address bar and press **Enter**.
 
-![Chrome menu with Extensions → Manage extensions open](docs/screenshots/manage-extensions.png)
+<img src="docs/screenshots/manage-extensions.png" alt="Chrome menu with Extensions → Manage extensions open" width="420">
 
 On the Extensions page, turn on **Developer mode** in the top-right corner. The **Load unpacked** button appears near the top left. Local installation is free.
 
