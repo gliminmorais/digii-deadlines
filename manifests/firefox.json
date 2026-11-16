@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Digii Deadlines",
+  "version": "1.5.0",
+  "description": "See upcoming deadlines and past assignments from your SNUC DigiiCampus Classroom.",
+  "host_permissions": [
+    "https://snuc.digiicampus.com/*"
+  ],
+  "action": {
+    "default_title": "Open Digii Deadlines"
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "sidebar_action": {
+    "default_title": "Digii Deadlines",
+    "default_panel": "sidepanel.html",
+    "open_at_install": false
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "digii-deadlines@gliminmorais.vercel.app",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "140.0"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://snuc.digiicampus.com/*"
+      ],
+      "js": [
+        "sync.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

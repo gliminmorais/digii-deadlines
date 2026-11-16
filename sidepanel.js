@@ -1,3 +1,4 @@
+const extensionApi = typeof browser === 'undefined' ? chrome : browser;
 const campusUrl = 'https://snuc.digiicampus.com/';
 const status = document.querySelector('#status');
 const list = document.querySelector('#deadlines');
@@ -6,15 +7,58 @@ const upcomingView = document.querySelector('#upcoming-view');
 const pastView = document.querySelector('#past-view');
 const refresh = document.querySelector('#refresh');
 const campus = document.querySelector('#campus');
+const theme = document.querySelector('#theme');
 const timeZone = 'Asia/Kolkata';
 const month = new Intl.DateTimeFormat('en-IN', { timeZone, month: 'short' });
 const day = new Intl.DateTimeFormat('en-IN', { timeZone, day: 'numeric' });
 const fullDate = new Intl.DateTimeFormat('en-IN', { timeZone, dateStyle: 'medium' });
 const time = new Intl.DateTimeFormat('en-IN', { timeZone, timeStyle: 'short' });
+const clock = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
 let tabId;
 let loadVersion = 0;
 let past = false;
 const openSubjects = new Set();
+
+if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('view') === 'tab') {
+  document.documentElement.dataset.view = 'dashboard';
+}
+
+function setTheme(dark) {
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  theme.setAttribute('aria-pressed', String(!dark));
+  theme.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+}
+
+if (theme) {
+  let initial;
+  try { initial = localStorage.getItem('digii-theme'); } catch {}
+  setTheme(initial ? initial === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches);
+  theme.addEventListener('click', () => {
+    const dark = theme.getAttribute('aria-pressed') === 'true';
+    const apply = () => {
+      setTheme(dark);
+      try { localStorage.setItem('digii-theme', dark ? 'dark' : 'light'); } catch {}
+    };
+    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.startViewTransition(apply);
+    } else {
+      apply();
+    }
+  });
+  document.addEventListener('click', event => {
+    const control = event.target.closest('button, summary, a');
+    if (!control || event.detail === 0 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const pop = element('span', 'cursor-pop');
+    pop.setAttribute('aria-hidden', 'true');
+    pop.style.left = event.clientX + 'px';
+    pop.style.top = event.clientY + 'px';
+    document.body.append(pop);
+    pop.animate([
+      { transform: 'translate(-50%, -50%) scale(.25)', opacity: .8 },
+      { transform: 'translate(-50%, -50%) scale(1.45)', opacity: 0 }
+    ], { duration: 310, easing: 'cubic-bezier(.2,.75,.25,1)' }).finished.then(() => pop.remove(), () => pop.remove());
+  });
+}
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -31,9 +75,10 @@ function renderItem(item) {
   link.rel = 'noopener';
   const date = element('span', 'date');
   date.setAttribute('aria-hidden', 'true');
-  date.append(element('span', 'day', day.format(item.due)), element('span', '', month.format(item.due)));
+  const shownDue = displayDeadline(item);
+  date.append(element('span', 'day', day.format(shownDue)), element('span', '', month.format(shownDue)));
   const content = element('span');
-  const due = item.dateOnly ? fullDate.format(item.due) : fullDate.format(item.due) + ', ' + time.format(item.due);
+  const due = item.dateOnly ? fullDate.format(shownDue) : fullDate.format(shownDue) + ', ' + time.format(shownDue);
   content.append(
     element('span', 'title', item.title),
     element('span', 'details', [item.course, 'Due ' + due].filter(Boolean).join(' · '))
@@ -41,6 +86,11 @@ function renderItem(item) {
   link.append(date, content);
   row.append(link);
   return row;
+}
+
+function displayDeadline(item) {
+  return !item.dateOnly && item.due % 1000 === 0 && clock.format(item.due) === '00:00:00'
+    ? item.due - 60_000 : item.due;
 }
 
 function historyItem(item) {
@@ -58,7 +108,7 @@ function historyItem(item) {
       ? item.grade + ' / ' + item.maximum : item.grade;
     metadata.append(element('span', 'marks', 'Marks ' + score));
   }
-  if (item.due !== null) metadata.append(element('span', 'past-date', 'Due ' + fullDate.format(item.due)));
+  if (item.due !== null) metadata.append(element('span', 'past-date', 'Due ' + fullDate.format(displayDeadline(item))));
   row.append(link, metadata);
   return row;
 }
@@ -95,17 +145,19 @@ function selectView(showPast) {
   past = showPast;
   upcomingView.setAttribute('aria-pressed', String(!past));
   pastView.setAttribute('aria-pressed', String(past));
+  pastView.parentElement?.setAttribute('data-view', past ? 'past' : 'upcoming');
   list.hidden = true;
   historyList.hidden = true;
-  load();
+  load(false, past ? 1 : -1);
 }
 
-async function load(force = false) {
+async function load(force = false, slide = 0) {
   const version = ++loadVersion;
   refresh.setAttribute('aria-busy', 'true');
+  status.removeAttribute('data-empty');
   refresh.disabled = true;
   try {
-    const tabs = await chrome.tabs.query({ url: campusUrl + '*', currentWindow: true });
+    const tabs = await extensionApi.tabs.query({ url: campusUrl + '*', currentWindow: true });
     if (version !== loadVersion) return;
     const tab = tabs.find(candidate => candidate.active) ??
       tabs.sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))[0];
@@ -122,7 +174,7 @@ async function load(force = false) {
     let result;
     status.textContent = past ? 'Loading past assignments…' : 'Syncing assignments across your courses…';
     try {
-      result = await chrome.tabs.sendMessage(tabId, { type: 'read-deadlines', refresh: force, past });
+      result = await extensionApi.tabs.sendMessage(tabId, { type: 'read-deadlines', refresh: force, past });
     } catch {
       if (version === loadVersion) status.textContent = 'Reload your DigiiCampus tab to start syncing.';
       return;
@@ -137,6 +189,7 @@ async function load(force = false) {
       return;
     }
     const count = result.items.length;
+    if (count === 0 && result.failed === 0) status.setAttribute('data-empty', '');
     const kind = past ? 'past' : 'upcoming';
     const summary = count ? count + ' ' + kind + (count === 1 ? ' assignment' : ' assignments') : 'No ' + kind + ' assignments';
     const coverage = result.failed
@@ -149,6 +202,13 @@ async function load(force = false) {
     else {
       list.replaceChildren(...result.items.map(renderItem));
       list.hidden = count === 0;
+    }
+    if (slide && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const content = count === 0 ? status : past ? historyList : list;
+      content.animate?.([
+        { transform: 'translateX(' + slide * 22 + 'px)', opacity: .35 },
+        { transform: 'translateX(0)', opacity: 1 }
+      ], { duration: 240, easing: 'cubic-bezier(.2,.75,.25,1)' });
     }
   } catch {
     if (version === loadVersion) status.textContent = 'Couldn’t read the dashboard. Try refreshing.';
@@ -164,19 +224,19 @@ campus.addEventListener('click', async event => {
   if (tabId === undefined || event.ctrlKey || event.metaKey || event.shiftKey) return;
   event.preventDefault();
   try {
-    await chrome.tabs.update(tabId, { active: true });
+    await extensionApi.tabs.update(tabId, { active: true });
   } catch {
-    await chrome.tabs.create({ url: campusUrl });
+    await extensionApi.tabs.create({ url: campusUrl });
   }
 });
 refresh.addEventListener('click', () => load(true));
 upcomingView.addEventListener('click', () => selectView(false));
 pastView.addEventListener('click', () => selectView(true));
-chrome.tabs.onActivated.addListener(() => load());
-chrome.tabs.onRemoved.addListener(closedId => {
+extensionApi.tabs.onActivated.addListener(() => load());
+extensionApi.tabs.onRemoved.addListener(closedId => {
   if (closedId === tabId) load();
 });
-chrome.tabs.onUpdated.addListener((updatedId, change, tab) => {
+extensionApi.tabs.onUpdated.addListener((updatedId, change, tab) => {
   const isCampus = tab.url?.startsWith(campusUrl);
   if ((change.status === 'complete' && isCampus) || (updatedId === tabId && change.url && !isCampus)) load();
 });

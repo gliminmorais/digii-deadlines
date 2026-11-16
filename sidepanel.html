@@ -12,7 +12,16 @@
     <div class="heading">
       <h1>Digii Deadlines</h1>
     </div>
-    <button id="refresh" type="button" title="Refresh the dashboard" aria-label="Refresh the dashboard">↻</button>
+    <div class="header-actions">
+      <button id="theme" type="button" aria-label="Light mode" aria-pressed="true" title="Switch to dark mode">
+        <svg class="bulb" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path class="bulb-rays" d="M12 2v1.5M4.9 5l1.2 1.2M2 11h1.7M19.1 5l-1.2 1.2M22 11h-1.7"/>
+          <path class="bulb-glass" d="M9.5 17.5v-2c-1.7-.9-2.7-2.4-2.7-4.3a5.2 5.2 0 1 1 10.4 0c0 1.9-1 3.4-2.7 4.3v2z"/>
+          <path d="M10 20h4M11 22h2"/>
+        </svg>
+      </button>
+      <button id="refresh" type="button" title="Refresh the dashboard" aria-label="Refresh the dashboard">↻</button>
+    </div>
   </header>
   <nav class="views" aria-label="Assignment views">
     <button id="upcoming-view" type="button" aria-pressed="true">Upcoming</button>

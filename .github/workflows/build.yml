@@ -1,0 +1,35 @@
+name: Build extension packages
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript and run tests
+        run: |
+          node --check background.js
+          node --check sidepanel.js
+          node --check sync.js
+          node --test
+      - name: Build and verify install archives
+        run: |
+          node scripts/build.mjs
+          for archive in dist/*.zip; do
+            unzip -t "$archive"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digii-deadlines-browser-packages
+          path: dist/*.zip
+          if-no-files-found: error

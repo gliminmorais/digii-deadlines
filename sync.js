@@ -1,4 +1,5 @@
 (() => {
+  const extensionApi = typeof browser === 'undefined' ? chrome : browser;
   const origin = location.origin;
   const pageSize = 20;
   const cacheMs = 2 * 60 * 1000;
@@ -24,15 +25,26 @@
   }
 
   async function getJson(path, sync) {
-    const response = await fetch(origin + path, {
-      headers: { 'Auth-Token': sync.token, Accept: 'application/json' },
-      credentials: 'same-origin',
-      redirect: 'error',
-      cache: 'no-store',
-      signal: AbortSignal.any([sync.controller.signal, AbortSignal.timeout(12000)])
-    });
-    if (!response.ok) throw new Error('DigiiCampus HTTP ' + response.status);
-    return response.json();
+    const signal = sync.controller.signal;
+    const request = new AbortController();
+    const cancel = () => request.abort();
+    if (signal.aborted) cancel();
+    signal.addEventListener('abort', cancel, { once: true });
+    const timeout = setTimeout(cancel, 12_000);
+    try {
+      const response = await fetch(origin + path, {
+        headers: { 'Auth-Token': sync.token, Accept: 'application/json' },
+        credentials: 'same-origin',
+        redirect: 'error',
+        cache: 'no-store',
+        signal: request.signal
+      });
+      if (!response.ok) throw new Error('DigiiCampus HTTP ' + response.status);
+      return await response.json();
+    } finally {
+      clearTimeout(timeout);
+      signal.removeEventListener('abort', cancel);
+    }
   }
 
   function deadline(value) {
@@ -182,7 +194,7 @@
     };
   }
 
-  chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  extensionApi.runtime.onMessage.addListener((message, sender, respond) => {
     if (message?.type !== 'read-deadlines') return;
     read(message.refresh === true, message.past === true).then(respond, () => respond({ state: 'error', items: [] }));
     return true;
