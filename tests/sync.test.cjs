@@ -54,9 +54,17 @@ test('automatically loads and sorts multiple courses and follows pagination', as
   assert.deepEqual(Array.from(result.items, item => item.title), ['Essay', 'Lab', 'Quiz prep']);
   assert.equal(result.items[1].course, 'Systems');
   assert.equal(result.items[1].due, Date.parse('2099-11-25T18:29:00Z'));
-  assert.equal(result.items[1].href, origin + '/#/classroom/12/student/assignment/1');
+  assert.equal(result.items[1].href, origin + '/V2/#/classroom/12/student/assignment/1');
   assert.equal((await app.read()).items.length, 3);
   assert.equal(app.calls.length, 4);
+});
+
+test('builds the SNUC assignment URL with the V2 portal path', async () => {
+  const app = setup(url => url.pathname.endsWith('/classroom')
+    ? [{ id: 669, courseName: 'Systems' }]
+    : upcoming([row(1057, 'Lab report', '2099-11-25', false)], 1));
+  const result = await app.read();
+  assert.equal(result.items[0].href, origin + '/V2/#/classroom/669/student/assignment/1057');
 });
 
 test('reads previous assignment pages on demand and preserves submission and published grades', async () => {

@@ -78,7 +78,7 @@
     const score = value => typeof value === 'number' && Number.isFinite(value)
       ? String(value) : typeof value === 'string' ? value.trim().slice(0, 40) : '';
     return {
-      href: origin + '/#/classroom/' + course.id + '/student/assignment/' + row.id,
+      href: origin + '/V2/#/classroom/' + course.id + '/student/assignment/' + row.id,
       title: row.name.trim().slice(0, 300),
       course: typeof label === 'string' ? label.trim().slice(0, 150) : '',
       courseId: String(course.id),

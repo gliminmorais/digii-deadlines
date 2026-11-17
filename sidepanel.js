@@ -17,7 +17,7 @@ const clock = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minu
 let tabId;
 let loadVersion = 0;
 let past = false;
-const openSubjects = new Set();
+let openSubject;
 
 if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('view') === 'tab') {
   document.documentElement.dataset.view = 'dashboard';
@@ -45,6 +45,15 @@ if (theme) {
       apply();
     }
   });
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  document.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'mouse' || reducedMotion.matches) return;
+    const control = event.target.closest('button, summary, .assignment, .history-assignment, footer a');
+    if (!control) return;
+    const bounds = control.getBoundingClientRect();
+    control.style.setProperty('--pointer-x', event.clientX - bounds.left + 'px');
+    control.style.setProperty('--pointer-y', event.clientY - bounds.top + 'px');
+  }, { passive: true });
   document.addEventListener('click', event => {
     const control = event.target.closest('button, summary, a');
     if (!control || event.detail === 0 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -67,12 +76,26 @@ function element(tag, className, text) {
   return node;
 }
 
-function renderItem(item) {
-  const row = element('li');
-  const link = element('a', 'assignment');
+function assignmentLink(className, item, text) {
+  const link = element('a', className, text);
   link.href = item.href;
   link.target = '_blank';
   link.rel = 'noopener';
+  link.addEventListener('click', async event => {
+    if (tabId === undefined || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    try {
+      await extensionApi.tabs.update(tabId, { url: item.href, active: true });
+    } catch {
+      status.textContent = 'Couldn’t open the assignment. Reopen your signed-in DigiiCampus tab and refresh.';
+    }
+  });
+  return link;
+}
+
+function renderItem(item) {
+  const row = element('li');
+  const link = assignmentLink('assignment', item);
   const date = element('span', 'date');
   date.setAttribute('aria-hidden', 'true');
   const shownDue = displayDeadline(item);
@@ -95,11 +118,8 @@ function displayDeadline(item) {
 
 function historyItem(item) {
   const row = element('li', 'history-item');
-  const link = element('a', 'title', item.title);
-  link.href = item.href;
-  link.target = '_blank';
-  link.rel = 'noopener';
-  const metadata = element('div', 'history-meta');
+  const link = assignmentLink('history-assignment', item);
+  const metadata = element('span', 'history-meta');
   const label = item.submitted === true ? 'Submitted' : item.submitted === false ? 'Not submitted' : 'Status unavailable';
   const state = item.submitted === true ? 'submitted' : item.submitted === false ? 'missing' : 'unknown';
   metadata.append(element('span', 'submission ' + state, label));
@@ -109,7 +129,8 @@ function historyItem(item) {
     metadata.append(element('span', 'marks', 'Marks ' + score));
   }
   if (item.due !== null) metadata.append(element('span', 'past-date', 'Due ' + fullDate.format(displayDeadline(item))));
-  row.append(link, metadata);
+  link.append(element('span', 'title', item.title), metadata);
+  row.append(link);
   return row;
 }
 
@@ -124,7 +145,8 @@ function renderHistory(items) {
   historyList.replaceChildren(...groups.map(rows => {
     const id = rows[0].courseId;
     const group = element('details', 'subject');
-    group.open = openSubjects.has(id);
+    group.setAttribute('name', 'digii-history-subjects');
+    group.open = openSubject === id;
     const header = element('summary', 'subject-heading');
     header.append(element('span', 'subject-name', name(rows)),
       element('span', 'subject-count', rows.length + (rows.length === 1 ? ' assignment' : ' assignments')));
@@ -132,8 +154,16 @@ function renderHistory(items) {
     assignments.append(...rows.map(historyItem));
     group.append(header, assignments);
     group.addEventListener('toggle', () => {
-      if (group.open) openSubjects.add(id);
-      else openSubjects.delete(id);
+      const siblings = [...historyList.children];
+      if (!siblings.includes(group)) return;
+      if (group.open) {
+        openSubject = id;
+        for (const sibling of siblings) {
+          if (sibling !== group && sibling.open) sibling.open = false;
+        }
+      } else if (openSubject === id) {
+        openSubject = undefined;
+      }
     });
     return group;
   }));

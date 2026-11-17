@@ -18,7 +18,7 @@ class Element {
   addEventListener(event, listener) { this.listeners.set(event, listener); }
 }
 
-async function render(tabs, response) {
+async function render(tabs, response, update) {
   const nodes = new Map(['status', 'deadlines', 'refresh', 'campus', 'history', 'upcoming-view', 'past-view']
     .map(id => ['#' + id, new Element()]));
   runInNewContext(script, {
@@ -28,6 +28,7 @@ async function render(tabs, response) {
       onActivated: { addListener() {} },
       onRemoved: { addListener() {} },
       onUpdated: { addListener() {} },
+      update,
       query: async query => {
       assert.equal(query.url, portal + '*');
       return tabs;
@@ -47,7 +48,7 @@ test('explains how to start when a portal tab is missing', async () => {
   assert.equal(list.hidden, true);
 });
 
-test('opens past assignments in collapsed subject groups and shows zero marks', async () => {
+test('shows whole-row assignment links and keeps only one past subject open', async () => {
   const requests = [];
   const [status, list, nodes] = await render([{ id: 3 }], message => {
     requests.push(message.past);
@@ -65,22 +66,41 @@ test('opens past assignments in collapsed subject groups and shows zero marks', 
   const [design, systems] = nodes.get('#history').children;
   assert.equal(design.open, false);
   assert.equal(design.children[0].children[0].textContent, 'Design');
-  assert.equal(design.children[1].children[0].children[1].children[0].textContent, 'Not submitted');
-  assert.equal(systems.children[1].children[0].children[1].children[1].textContent, 'Marks 0 / 10');
+  const draft = design.children[1].children[0].children[0];
+  const lab = systems.children[1].children[0].children[0];
+  assert.equal(draft.className, 'history-assignment');
+  assert.equal(draft.children[1].children[0].textContent, 'Not submitted');
+  assert.equal(lab.children[1].children[1].textContent, 'Marks 0 / 10');
+  design.open = true;
+  design.listeners.get('toggle')();
+  systems.open = true;
+  systems.listeners.get('toggle')();
+  assert.equal(design.open, false);
+  assert.equal(systems.open, true);
+  design.listeners.get('toggle')();
+  await nodes.get('#refresh').listeners.get('click')();
+  const [rerenderedDesign, rerenderedSystems] = nodes.get('#history').children;
+  assert.equal(rerenderedDesign.open, false);
+  assert.equal(rerenderedSystems.open, true);
 });
 
 test('shows linked assignments and formats due times in IST', async () => {
-  const href = portal + '#/classroom/12/student/assignment/56';
+  const href = portal + 'V2/#/classroom/12/student/assignment/56';
+  const navigation = [];
   const [status, list] = await render([{ id: 2 }, { id: 3, active: true }], {
     state: 'ready', loaded: 2, failed: 0,
     items: [{ href, title: 'Lab report', course: 'Systems', due: Date.parse('2099-11-25T18:29:00Z') }]
-  });
+  }, async (id, options) => navigation.push([id, options.url, options.active]));
   assert.match(status.textContent, /1 upcoming assignment/);
   assert.equal(list.hidden, false);
   const link = list.children[0].children[0];
   assert.equal(link.href, href);
   assert.equal(link.children[1].children[0].textContent, 'Lab report');
   assert.match(link.children[1].children[1].textContent, /Systems.*25 Nov 2099.*11:59/i);
+  let intercepted = false;
+  await link.listeners.get('click')({ preventDefault() { intercepted = true; } });
+  assert.equal(intercepted, true);
+  assert.deepEqual(navigation, [[3, href, true]]);
 });
 
 test('shows midnight IST on the previous day at 11:59 pm and preserves date-only deadlines', async () => {
