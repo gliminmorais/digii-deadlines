@@ -40,6 +40,9 @@ if (theme) {
       try { localStorage.setItem('digii-theme', dark ? 'dark' : 'light'); } catch {}
     };
     if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const bounds = theme.getBoundingClientRect();
+      document.documentElement.style.setProperty('--theme-origin-x', bounds.left + bounds.width / 2 + 'px');
+      document.documentElement.style.setProperty('--theme-origin-y', bounds.top + bounds.height / 2 + 'px');
       document.startViewTransition(apply);
     } else {
       apply();

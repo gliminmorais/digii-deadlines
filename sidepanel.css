@@ -219,17 +219,17 @@ footer > :last-child { margin-inline-start: auto; }
   mix-blend-mode: normal;
 }
 ::view-transition-new(root) {
-  animation: corner-reveal 480ms cubic-bezier(.2,.75,.25,1) both;
+  animation: bulb-reveal 800ms cubic-bezier(.2,.75,.25,1) both;
 }
 ::view-transition-group(theme-bulb) {
   z-index: 1;
-  animation-duration: 480ms;
+  animation-duration: 800ms;
 }
-::view-transition-old(theme-bulb) { animation: dim-bulb 480ms ease-in-out both; }
-::view-transition-new(theme-bulb) { animation: brighten-bulb 480ms ease-in-out both; }
-@keyframes corner-reveal {
-  from { clip-path: circle(0 at 100% 0); }
-  to { clip-path: circle(150vmax at 100% 0); }
+::view-transition-old(theme-bulb) { animation: dim-bulb 800ms ease-in-out both; }
+::view-transition-new(theme-bulb) { animation: brighten-bulb 800ms ease-in-out both; }
+@keyframes bulb-reveal {
+  from { clip-path: circle(0 at var(--theme-origin-x, 100%) var(--theme-origin-y, 0%)); }
+  to { clip-path: circle(150vmax at var(--theme-origin-x, 100%) var(--theme-origin-y, 0%)); }
 }
 @keyframes dim-bulb {
   from { opacity: 1; }
