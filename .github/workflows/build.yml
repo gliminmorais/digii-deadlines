@@ -19,6 +19,7 @@ jobs:
       - name: Check JavaScript and run tests
         run: |
           node --check background.js
+          node --check assignment-icons.js
           node --check sidepanel.js
           node --check sync.js
           node --test

@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const runtimeFiles = ['background.js', 'sidepanel.css', 'sidepanel.html', 'sidepanel.js', 'sync.js'];
+const runtimeFiles = [
+  'assignment-icons.js', 'background.js', 'sidepanel.css', 'sidepanel.html',
+  'sidepanel.js', 'sync.js', 'LICENSE-KUBAI.txt'
+];
 const targets = {
   chromium: 'manifest.json',
   portable: 'manifests/portable.json',

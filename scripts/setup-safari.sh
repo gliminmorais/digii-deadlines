@@ -44,6 +44,9 @@ resources="${1:-$script_dir/extension}"
 resources="$(cd -- "$resources" && pwd -P)"
 
 runtime_files=(manifest.json background.js sidepanel.html sidepanel.css sidepanel.js sync.js)
+if grep -q 'src="assignment-icons.js"' "$resources/sidepanel.html"; then
+  runtime_files+=(assignment-icons.js LICENSE-KUBAI.txt)
+fi
 for file in "${runtime_files[@]}"; do
   [ -f "$resources/$file" ] || fail "Missing $file in $resources."
 done
