@@ -10,7 +10,7 @@
 <body>
   <header>
     <div class="heading">
-      <h1>Digii Deadlines</h1>
+      <h1 aria-label="Digii Deadlines"><svg class="wordmark-d" viewBox="0 0 100 100" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M22 0h28a50 50 0 0 1 0 100H0V22Zm5 24v53h23a26.5 26.5 0 0 0 0-53Z"/><path class="wordmark-fold" d="M0 22 22 0v22Z"/></svg>igii Deadlines</h1>
     </div>
     <div class="header-actions">
       <button id="theme" type="button" aria-label="Light mode" aria-pressed="true" title="Switch to dark mode">
@@ -24,11 +24,16 @@
     </div>
   </header>
   <nav class="views" aria-label="Assignment views">
-    <button id="upcoming-view" type="button" aria-pressed="true">Upcoming</button>
-    <button id="past-view" type="button" aria-pressed="false">Past Assignments</button>
+    <button id="upcoming-view" type="button" aria-pressed="true"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.5 1.5M6 3 3.5 5.5M18 3l2.5 2.5M5.5 20l-1 1M18.5 20l1 1"/></svg>Upcoming</button>
+    <button id="past-view" type="button" aria-pressed="false"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 11l2 2 4-4M9 17h6"/></svg>Past Assignments</button>
   </nav>
   <main>
     <p id="status" role="status">Checking your DigiiCampus tab…</p>
+    <section id="empty-upcoming" class="empty-state" aria-label="No upcoming assignments" hidden>
+      <span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M9 14l2 2 4-4"/></svg></span>
+      <strong>Nothing due</strong>
+      <p>You’re all caught up on upcoming assignments.</p>
+    </section>
     <ol id="deadlines" aria-label="Assignment deadlines" hidden></ol>
     <section id="history" aria-label="Past assignments by subject" hidden></section>
   </main>

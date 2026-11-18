@@ -3,6 +3,7 @@ const campusUrl = 'https://snuc.digiicampus.com/';
 const status = document.querySelector('#status');
 const list = document.querySelector('#deadlines');
 const historyList = document.querySelector('#history');
+const emptyUpcoming = document.querySelector('#empty-upcoming');
 const upcomingView = document.querySelector('#upcoming-view');
 const pastView = document.querySelector('#past-view');
 const refresh = document.querySelector('#refresh');
@@ -188,6 +189,7 @@ async function load(force = false, slide = 0) {
   const version = ++loadVersion;
   refresh.setAttribute('aria-busy', 'true');
   status.removeAttribute('data-empty');
+  emptyUpcoming.hidden = true;
   refresh.disabled = true;
   try {
     const tabs = await extensionApi.tabs.query({ url: campusUrl + '*', currentWindow: true });
@@ -222,7 +224,8 @@ async function load(force = false, slide = 0) {
       return;
     }
     const count = result.items.length;
-    if (count === 0 && result.failed === 0) status.setAttribute('data-empty', '');
+    if (count === 0 && result.failed === 0 && result.loaded > 0 && !past) emptyUpcoming.hidden = false;
+    else if (count === 0 && result.failed === 0) status.setAttribute('data-empty', '');
     const kind = past ? 'past' : 'upcoming';
     const summary = count ? count + ' ' + kind + (count === 1 ? ' assignment' : ' assignments') : 'No ' + kind + ' assignments';
     const coverage = result.failed
@@ -237,7 +240,7 @@ async function load(force = false, slide = 0) {
       list.hidden = count === 0;
     }
     if (slide && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const content = count === 0 ? status : past ? historyList : list;
+      const content = !emptyUpcoming.hidden ? emptyUpcoming : count === 0 ? status : past ? historyList : list;
       content.animate?.([
         { transform: 'translateX(' + slide * 22 + 'px)', opacity: .35 },
         { transform: 'translateX(0)', opacity: 1 }

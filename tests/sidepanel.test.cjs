@@ -19,7 +19,7 @@ class Element {
 }
 
 async function render(tabs, response, update) {
-  const nodes = new Map(['status', 'deadlines', 'refresh', 'campus', 'history', 'upcoming-view', 'past-view']
+  const nodes = new Map(['status', 'deadlines', 'refresh', 'campus', 'history', 'upcoming-view', 'past-view', 'empty-upcoming']
     .map(id => ['#' + id, new Element()]));
   runInNewContext(script, {
     matchMedia: () => ({ matches: false }),
