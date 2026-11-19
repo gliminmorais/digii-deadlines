@@ -30,6 +30,7 @@ button { color: inherit; font: inherit; cursor: pointer; }
 }
 #refresh:enabled:hover { background: var(--hover); }
 #refresh:disabled { opacity: .55; cursor: wait; }
+.refresh-icon { display: grid; width: 20px; height: 20px; place-items: center; }
 
 .views {
   display: grid;
@@ -79,7 +80,15 @@ button { color: inherit; font: inherit; cursor: pointer; }
 .views button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
 
 main { flex: 1; padding: 18px var(--gutter) 24px; }
-#status { margin: 0; color: var(--muted); font-size: 12px; }
+.dashboard-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 7px;
+}
+#status, .sync-status { margin: 0; color: var(--muted); font-size: 11px; }
+#status[data-compact]:not([data-empty]) + .sync-status::before { content: '·'; margin-right: 7px; }
+#status:not([data-compact]) + .sync-status, #status[data-empty] + .sync-status { flex-basis: 100%; }
 .empty-state {
   display: grid;
   justify-items: center;
@@ -115,6 +124,19 @@ main { flex: 1; padding: 18px var(--gutter) 24px; }
 }
 #deadlines, #history { margin: 12px 0 0; }
 ol, ul { padding: 0; list-style: none; }
+.deadline-group + .deadline-group { margin-top: 16px; }
+.deadline-group-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+#deadlines-today { color: var(--accent); }
+.deadline-group-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.deadline-rows { margin: 0; }
 #deadlines li, .subject {
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -148,9 +170,16 @@ ol, ul { padding: 0; list-style: none; }
   text-transform: uppercase;
 }
 .day { font-size: 20px; font-variant-numeric: tabular-nums; }
-.title, .details { display: block; overflow-wrap: anywhere; }
-.title { font-weight: 650; line-height: 1.35; }
-.details { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.title, .details { display: block; }
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.details { margin-top: 4px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.details strong, .past-date strong { font-weight: 700; }
 
 .subject + .subject { margin-top: 8px; }
 .subject-heading { padding: 14px; color: var(--accent); cursor: pointer; border-radius: 19px; }

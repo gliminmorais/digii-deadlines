@@ -18,10 +18,17 @@ class Element {
   addEventListener(event, listener) { this.listeners.set(event, listener); }
 }
 
-async function render(tabs, response, update) {
-  const nodes = new Map(['status', 'deadlines', 'refresh', 'campus', 'history', 'upcoming-view', 'past-view', 'empty-upcoming']
+function textOf(node) {
+  if (typeof node === 'string') return node;
+  return (node.textContent ?? '') + node.children.map(textOf).join('');
+}
+
+async function render(tabs, response, update, now = Date.now()) {
+  const nodes = new Map(['status', 'sync-time', 'sync-summary', 'deadlines', 'refresh', 'campus',
+    'history', 'upcoming-view', 'past-view', 'empty-upcoming']
     .map(id => ['#' + id, new Element()]));
   runInNewContext(script, {
+    Date: class extends Date { static now() { return now; } },
     matchMedia: () => ({ matches: false }),
     document: { querySelector: id => nodes.get(id), createElement: () => new Element() },
     chrome: { tabs: {
@@ -62,7 +69,7 @@ test('shows whole-row assignment links and keeps only one past subject open', as
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(nodes.get('#past-view').getAttribute('aria-pressed'), 'true');
   assert.equal(list.hidden, true);
-  assert.match(status.textContent, /2 past assignments/);
+  assert.equal(status.textContent, '2 past');
   const [design, systems] = nodes.get('#history').children;
   assert.equal(design.open, false);
   assert.equal(design.children[0].children[0].textContent, 'Design');
@@ -91,12 +98,16 @@ test('shows linked assignments and formats due times in IST', async () => {
     state: 'ready', loaded: 2, failed: 0,
     items: [{ href, title: 'Lab report', course: 'Systems', due: Date.parse('2099-11-25T18:29:00Z') }]
   }, async (id, options) => navigation.push([id, options.url, options.active]));
-  assert.match(status.textContent, /1 upcoming assignment/);
+  assert.equal(status.textContent, '1 upcoming');
+  assert.equal(status.title, '1 upcoming assignment · 2 courses checked');
   assert.equal(list.hidden, false);
-  const link = list.children[0].children[0];
+  const link = list.children[0].children[1].children[0].children[0];
   assert.equal(link.href, href);
   assert.equal(link.children[1].children[0].textContent, 'Lab report');
-  assert.match(link.children[1].children[1].textContent, /Systems.*25 Nov 2099.*11:59/i);
+  const details = link.children[1].children[1];
+  assert.equal(details.children[0].className, 'assignment-course');
+  assert.equal(details.children.at(-1).className, 'assignment-due');
+  assert.match(textOf(details), /Systems.*25 Nov 2099.*11:59/i);
   let intercepted = false;
   await link.listeners.get('click')({ preventDefault() { intercepted = true; } });
   assert.equal(intercepted, true);
@@ -112,10 +123,29 @@ test('shows midnight IST on the previous day at 11:59 pm and preserves date-only
       { title: 'Date only', course: 'Systems', due, dateOnly: true }
     ]
   });
-  const [midnight, civil] = list.children.map(row => row.children[0]);
+  const [midnight, civil] = list.children[0].children[1].children.map(row => row.children[0]);
   assert.equal(midnight.children[0].children[0].textContent, '16');
-  assert.match(midnight.children[1].children[1].textContent, /16 Nov 2026.*11:59\s*pm/i);
+  assert.match(textOf(midnight.children[1].children[1]), /16 Nov 2026.*11:59\s*pm/i);
   assert.equal(civil.children[0].children[0].textContent, '17');
-  assert.match(civil.children[1].children[1].textContent, /Due 17 Nov 2026$/);
+  assert.match(textOf(civil.children[1].children[1]), /Due 17 Nov 2026$/);
 });
 
+test('groups upcoming assignments by IST day and keeps the last full sync during partial results', async () => {
+  const now = Date.parse('2026-11-20T12:00:00+05:30');
+  const syncedAt = now - 60_000;
+  const items = [
+    { title: 'Midnight', due: Date.parse('2026-11-21T00:00:00+05:30') },
+    { title: 'Tomorrow', due: Date.parse('2026-11-21T16:00:00+05:30') },
+    { title: 'Later', due: Date.parse('2026-11-23T16:00:00+05:30') }
+  ];
+  let partial = false;
+  const [status, list, nodes] = await render([{ id: 3 }], () => ({
+    state: 'ready', loaded: 2, failed: partial ? 1 : 0, items, syncedAt: partial ? null : syncedAt
+  }), undefined, now);
+  assert.deepEqual(Array.from(list.children, group => group.children[0].textContent), ['Today', 'Tomorrow', 'Later']);
+  assert.equal(nodes.get('#sync-time').dateTime, new Date(syncedAt).toISOString());
+  partial = true;
+  await nodes.get('#refresh').listeners.get('click')();
+  assert.match(status.textContent, /1 course unavailable/);
+  assert.equal(nodes.get('#sync-time').dateTime, new Date(syncedAt).toISOString());
+});

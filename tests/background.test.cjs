@@ -15,7 +15,8 @@ function simulate(target, apiName, extras = {}) {
     runtime: {
       getManifest: () => manifest,
       getURL: path => 'extension://example/' + path,
-      onInstalled: { addListener: fn => { listeners.install = fn; } }
+      onInstalled: { addListener: fn => { listeners.install = fn; } },
+      onMessage: { addListener: fn => { listeners.message = fn; } }
     },
     action: { onClicked: { addListener: fn => { listeners.click = fn; } } },
     tabs: { create: async ({ url }) => { opened.push(url); } },
@@ -34,6 +35,22 @@ test('Chrome and Edge register the native side panel for toolbar clicks', async 
   await listeners.install();
   assert.equal(enable, true);
   assert.deepEqual(opened, []);
+});
+
+test('records only the newest timestamp from a DigiiCampus sync', async () => {
+  const timestamps = [];
+  const key = 'lastSuccessfulDigiiSync';
+  const { listeners } = simulate('portable', 'chrome', { storage: { local: {
+    get: async () => ({ [key]: timestamps.at(-1) }),
+    set: async value => { timestamps.push(value[key]); }
+  } } });
+  const newer = Date.now() - 2000;
+  const message = syncedAt => ({ type: 'digii-full-sync', syncedAt });
+  const sender = { url: 'https://snuc.digiicampus.com/V2/' };
+  const send = syncedAt => new Promise(resolve => listeners.message(message(syncedAt), sender, resolve));
+  assert.equal(listeners.message(message(newer), { url: 'https://example.com/' }, () => {}), undefined);
+  await Promise.all([send(newer), send(newer - 1000)]);
+  assert.deepEqual(timestamps, [newer]);
 });
 
 test('Firefox opens the native sidebar directly from a toolbar click', async () => {

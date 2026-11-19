@@ -171,7 +171,14 @@
 
     const sync = { ...user, past, pending: true, controller: new AbortController() };
     collections.set(past, sync);
-    sync.result = loadAll(sync).finally(() => {
+    sync.result = loadAll(sync).then(result => {
+      const current = session();
+      if (result.state !== 'ready' || result.failed || sync.controller.signal.aborted ||
+          collections.get(past) !== sync || current?.token !== sync.token || current?.id !== sync.id) return result;
+      const syncedAt = Date.now();
+      void extensionApi.runtime.sendMessage?.({ type: 'digii-full-sync', syncedAt })?.catch(() => {});
+      return { ...result, syncedAt };
+    }).finally(() => {
       sync.pending = false;
       sync.finished = Date.now();
     });

@@ -11,6 +11,7 @@ function setup(respond, initialSession = { token }) {
   let listener, tick;
   let session = initialSession;
   const calls = [];
+  const messages = [];
   runInNewContext(script(), {
     Date, URL, atob, AbortSignal, AbortController, location: { origin },
     localStorage: { getItem: () => JSON.stringify(session) },
@@ -26,9 +27,10 @@ function setup(respond, initialSession = { token }) {
       const body = respond(url);
       return { ok: body !== null, status: body === null ? 403 : 200, json: async () => body };
     },
-    chrome: { runtime: { onMessage: { addListener(fn) { listener = fn; } } } }
+    chrome: { runtime: { onMessage: { addListener(fn) { listener = fn; } },
+      sendMessage: async message => { messages.push(message); } } }
   });
-  return { calls, setSession(value) { session = value; tick(); },
+  return { calls, messages, setSession(value) { session = value; tick(); },
     read(refresh = false, past = false) {
       return new Promise(resolve => listener({ type: 'read-deadlines', refresh, past }, {}, resolve));
     }
@@ -57,6 +59,9 @@ test('automatically loads and sorts multiple courses and follows pagination', as
   assert.equal(result.items[1].href, origin + '/V2/#/classroom/12/student/assignment/1');
   assert.equal((await app.read()).items.length, 3);
   assert.equal(app.calls.length, 4);
+  assert.ok(result.syncedAt <= Date.now());
+  assert.deepEqual(Array.from(app.messages, message => [message.type, message.syncedAt]),
+    [['digii-full-sync', result.syncedAt]]);
 });
 
 test('builds the SNUC assignment URL with the V2 portal path', async () => {
@@ -97,7 +102,10 @@ test('reports partial coverage and refreshes it; clears results on sign-out', as
     if (url.pathname.includes('/13/') && blocked) return null;
     return upcoming([], 0);
   });
-  assert.equal((await app.read()).failed, 1);
+  const partial = await app.read();
+  assert.equal(partial.failed, 1);
+  assert.equal(partial.syncedAt, undefined);
+  assert.equal(app.messages.length, 0);
   blocked = false;
   assert.equal((await app.read(true)).loaded, 2);
   app.setSession(null);

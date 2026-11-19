@@ -21,7 +21,9 @@
           <path d="M10 20h4M11 22h2"/>
         </svg>
       </button>
-      <button id="refresh" type="button" title="Refresh the dashboard" aria-label="Refresh the dashboard">↻</button>
+      <button id="refresh" type="button" title="Refresh the dashboard" aria-label="Refresh the dashboard">
+        <span class="refresh-icon" aria-hidden="true">↻</span>
+      </button>
     </div>
   </header>
   <nav class="views" aria-label="Assignment views">
@@ -29,13 +31,18 @@
     <button id="past-view" type="button" aria-pressed="false"><span class="tab-icon" aria-hidden="true"></span>Past Assignments</button>
   </nav>
   <main>
-    <p id="status" role="status">Checking your DigiiCampus tab…</p>
+    <div class="dashboard-status">
+      <p id="status" role="status">Checking your DigiiCampus tab…</p>
+      <p class="sync-status" id="sync-summary" hidden>
+        <span>Synced</span> <time id="sync-time"></time>
+      </p>
+    </div>
     <section id="empty-upcoming" class="empty-state" aria-label="No upcoming assignments" hidden>
       <span class="empty-icon" aria-hidden="true"></span>
       <strong>Nothing due</strong>
       <p>You’re all caught up on upcoming assignments.</p>
     </section>
-    <ol id="deadlines" aria-label="Assignment deadlines" hidden></ol>
+    <section id="deadlines" aria-label="Assignment deadlines" hidden></section>
     <section id="history" aria-label="Past assignments by subject" hidden></section>
   </main>
   <footer>

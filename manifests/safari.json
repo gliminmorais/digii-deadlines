@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Digii Deadlines",
-  "version": "1.5.4",
+  "version": "1.6.0",
   "description": "See upcoming deadlines and past assignments from your SNUC DigiiCampus Classroom.",
   "host_permissions": [
     "https://snuc.digiicampus.com/*"
   ],
+  "permissions": ["storage"],
   "action": {
     "default_title": "Open Digii Deadlines"
   },

@@ -1,5 +1,20 @@
 const extension = typeof browser === 'undefined' ? chrome : browser;
 const dashboardUrl = extension.runtime.getURL('sidepanel.html') + '?view=tab';
+const syncStorageKey = 'lastSuccessfulDigiiSync';
+let syncWrites = Promise.resolve();
+
+extension.runtime.onMessage?.addListener((message, sender, reply) => {
+  const time = message?.syncedAt;
+  if (message?.type !== 'digii-full-sync' || !sender.url?.startsWith('https://snuc.digiicampus.com/') ||
+      !Number.isSafeInteger(time) || time <= 0 || time > Date.now()) return;
+  const write = syncWrites.then(async () => {
+    const stored = await extension.storage.local.get(syncStorageKey);
+    if (time > (stored[syncStorageKey] ?? 0)) await extension.storage.local.set({ [syncStorageKey]: time });
+  });
+  syncWrites = write.catch(() => {});
+  write.then(() => reply({ ok: true }), () => reply({ ok: false }));
+  return true;
+});
 
 function openDashboard() {
   return extension.tabs.create({ url: dashboardUrl });

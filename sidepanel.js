@@ -1,24 +1,48 @@
 const extensionApi = typeof browser === 'undefined' ? chrome : browser;
 const campusUrl = 'https://snuc.digiicampus.com/';
 const status = document.querySelector('#status');
+const syncTime = document.querySelector('#sync-time');
+const syncSummary = document.querySelector('#sync-summary');
+const syncStorageKey = 'lastSuccessfulDigiiSync';
 const list = document.querySelector('#deadlines');
 const historyList = document.querySelector('#history');
 const emptyUpcoming = document.querySelector('#empty-upcoming');
 const upcomingView = document.querySelector('#upcoming-view');
 const pastView = document.querySelector('#past-view');
 const refresh = document.querySelector('#refresh');
+const refreshIcon = document.querySelector('.refresh-icon');
 const campus = document.querySelector('#campus');
 const theme = document.querySelector('#theme');
 const timeZone = 'Asia/Kolkata';
 const month = new Intl.DateTimeFormat('en-IN', { timeZone, month: 'short' });
 const day = new Intl.DateTimeFormat('en-IN', { timeZone, day: 'numeric' });
 const fullDate = new Intl.DateTimeFormat('en-IN', { timeZone, dateStyle: 'medium' });
+const shortDate = new Intl.DateTimeFormat('en-IN', { timeZone, day: 'numeric', month: 'short' });
 const time = new Intl.DateTimeFormat('en-IN', { timeZone, timeStyle: 'short' });
 const clock = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
 let tabId;
 let loadVersion = 0;
 let past = false;
 let openSubject;
+let lastSuccessfulSync = 0;
+
+function showLastSync(timestamp) {
+  const now = Date.now();
+  if (!Number.isSafeInteger(timestamp) || timestamp < lastSuccessfulSync || timestamp <= 0 || timestamp > now) return;
+  lastSuccessfulSync = timestamp;
+  syncTime.dateTime = new Date(timestamp).toISOString();
+  const shownTime = time.format(timestamp);
+  syncTime.textContent = fullDate.format(timestamp) === fullDate.format(now)
+    ? shownTime : shortDate.format(timestamp) + ', ' + shownTime;
+  syncSummary.title = 'Last successful sync · ' + fullDate.format(timestamp) + ', ' + shownTime + ' IST';
+  syncSummary.hidden = false;
+}
+
+extensionApi.storage?.local.get(syncStorageKey)
+  .then(result => showLastSync(result[syncStorageKey])).catch(() => {});
+extensionApi.storage?.onChanged.addListener((changes, area) => {
+  if (area === 'local') showLastSync(changes[syncStorageKey]?.newValue);
+});
 
 if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('view') === 'tab') {
   document.documentElement.dataset.view = 'dashboard';
@@ -106,13 +130,36 @@ function renderItem(item) {
   date.append(element('span', 'day', day.format(shownDue)), element('span', '', month.format(shownDue)));
   const content = element('span');
   const due = item.dateOnly ? fullDate.format(shownDue) : fullDate.format(shownDue) + ', ' + time.format(shownDue);
-  content.append(
-    element('span', 'title', item.title),
-    element('span', 'details', [item.course, 'Due ' + due].filter(Boolean).join(' · '))
-  );
+  const details = element('span', 'details');
+  if (item.course) details.append(element('strong', 'assignment-course', item.course), ' · ');
+  details.append('Due ', element('strong', 'assignment-due', due));
+  content.append(element('span', 'title', item.title), details);
   link.append(date, content);
   row.append(link);
   return row;
+}
+
+function renderUpcoming(items, now = Date.now()) {
+  const today = fullDate.format(now);
+  const tomorrow = fullDate.format(now + 86_400_000);
+  const groups = { Today: [], Tomorrow: [], Later: [] };
+  for (const item of items) {
+    const date = fullDate.format(displayDeadline(item));
+    const group = date === today ? 'Today' : date === tomorrow ? 'Tomorrow' : 'Later';
+    groups[group].push(item);
+  }
+  list.replaceChildren(...Object.entries(groups).flatMap(([label, assignments]) => {
+    if (!assignments.length) return [];
+    const section = element('section', 'deadline-group');
+    const heading = element('h2', 'deadline-group-title', label);
+    heading.id = 'deadlines-' + label.toLowerCase();
+    section.setAttribute('aria-labelledby', heading.id);
+    const rows = element('ol', 'deadline-rows');
+    rows.append(...assignments.map(renderItem));
+    section.append(heading, rows);
+    return [section];
+  }));
+  list.hidden = items.length === 0;
 }
 
 function displayDeadline(item) {
@@ -132,7 +179,11 @@ function historyItem(item) {
       ? item.grade + ' / ' + item.maximum : item.grade;
     metadata.append(element('span', 'marks', 'Marks ' + score));
   }
-  if (item.due !== null) metadata.append(element('span', 'past-date', 'Due ' + fullDate.format(displayDeadline(item))));
+  if (item.due !== null) {
+    const due = element('span', 'past-date', 'Due ');
+    due.append(element('strong', '', fullDate.format(displayDeadline(item))));
+    metadata.append(due);
+  }
   link.append(element('span', 'title', item.title), metadata);
   row.append(link);
   return row;
@@ -189,6 +240,8 @@ async function load(force = false, slide = 0) {
   const version = ++loadVersion;
   refresh.setAttribute('aria-busy', 'true');
   status.removeAttribute('data-empty');
+  status.removeAttribute('title');
+  status.removeAttribute('data-compact');
   emptyUpcoming.hidden = true;
   refresh.disabled = true;
   try {
@@ -223,6 +276,7 @@ async function load(force = false, slide = 0) {
       status.textContent = 'Couldn’t load your course list. Check your DigiiCampus session and try Refresh.';
       return;
     }
+    showLastSync(result.syncedAt);
     const count = result.items.length;
     if (count === 0 && result.failed === 0 && result.loaded > 0 && !past) emptyUpcoming.hidden = false;
     else if (count === 0 && result.failed === 0) status.setAttribute('data-empty', '');
@@ -231,14 +285,17 @@ async function load(force = false, slide = 0) {
     const coverage = result.failed
       ? ' · ' + result.failed + (result.failed === 1 ? ' course unavailable' : ' courses unavailable')
       : ' · ' + result.loaded + (result.loaded === 1 ? ' course checked' : ' courses checked');
-    status.textContent = result.failed && !result.loaded && !count
-      ? 'Couldn’t load assignments for your courses. Try Refresh.'
-      : summary + coverage;
-    if (past) renderHistory(result.items);
-    else {
-      list.replaceChildren(...result.items.map(renderItem));
-      list.hidden = count === 0;
+    if (result.failed && !result.loaded && !count) {
+      status.textContent = 'Couldn’t load assignments for your courses. Try Refresh.';
+    } else if (result.failed) {
+      status.textContent = (count ? count + ' ' + kind : summary) + coverage;
+    } else {
+      status.textContent = count ? count + ' ' + kind : summary;
+      status.title = summary + coverage;
+      status.setAttribute('data-compact', '');
     }
+    if (past) renderHistory(result.items);
+    else renderUpcoming(result.items);
     if (slide && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const content = !emptyUpcoming.hidden ? emptyUpcoming : count === 0 ? status : past ? historyList : list;
       content.animate?.([
@@ -265,7 +322,15 @@ campus.addEventListener('click', async event => {
     await extensionApi.tabs.create({ url: campusUrl });
   }
 });
-refresh.addEventListener('click', () => load(true));
+refresh.addEventListener('click', () => {
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    refreshIcon?.animate?.([
+      { transform: 'rotate(0deg)' },
+      { transform: 'rotate(360deg)' }
+    ], { duration: 550, easing: 'cubic-bezier(.22,.7,.28,1)' });
+  }
+  return load(true);
+});
 upcomingView.addEventListener('click', () => selectView(false));
 pastView.addEventListener('click', () => selectView(true));
 extensionApi.tabs.onActivated.addListener(() => load());
