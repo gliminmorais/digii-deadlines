@@ -24,7 +24,7 @@ function textOf(node) {
 }
 
 async function render(tabs, response, update, now = Date.now()) {
-  const nodes = new Map(['status', 'sync-time', 'sync-summary', 'deadlines', 'refresh', 'campus',
+  const nodes = new Map(['status', 'sync-time', 'sync-summary', 'refresh-notice', 'deadlines', 'refresh', 'campus',
     'history', 'upcoming-view', 'past-view', 'empty-upcoming']
     .map(id => ['#' + id, new Element()]));
   runInNewContext(script, {
@@ -140,12 +140,41 @@ test('groups upcoming assignments by IST day and keeps the last full sync during
   ];
   let partial = false;
   const [status, list, nodes] = await render([{ id: 3 }], () => ({
-    state: 'ready', loaded: 2, failed: partial ? 1 : 0, items, syncedAt: partial ? null : syncedAt
+    state: 'ready', loaded: 2, failed: partial ? 1 : 0,
+    items: partial ? items.slice(0, 1) : items, syncedAt: partial ? null : syncedAt
   }), undefined, now);
   assert.deepEqual(Array.from(list.children, group => group.children[0].textContent), ['Today', 'Tomorrow', 'Later']);
   assert.equal(nodes.get('#sync-time').dateTime, new Date(syncedAt).toISOString());
   partial = true;
   await nodes.get('#refresh').listeners.get('click')();
-  assert.match(status.textContent, /1 course unavailable/);
+  assert.equal(status.textContent, '3 upcoming');
+  assert.match(nodes.get('#refresh-notice').textContent, /1 course unavailable.*try again/i);
+  assert.equal(list.children.length, 3);
   assert.equal(nodes.get('#sync-time').dateTime, new Date(syncedAt).toISOString());
+});
+
+test('keeps the same assignment cards during an in-progress refresh and a refresh error', async () => {
+  const full = { state: 'ready', loaded: 1, failed: 0, items: [{ title: 'Lab', due: Date.parse('2099-11-23') }] };
+  let response = full;
+  const [, list, nodes] = await render([{ id: 3 }], () => response);
+  const group = list.children[0];
+  const refresh = nodes.get('#refresh').listeners.get('click');
+  let finish;
+  response = new Promise(resolve => { finish = resolve; });
+  const pending = refresh();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(list.hidden, false);
+  assert.equal(list.children[0], group);
+  finish({ state: 'error' });
+  await pending;
+  assert.equal(list.children[0], group);
+  assert.match(nodes.get('#refresh-notice').textContent, /refresh failed.*try again/i);
+  response = { ...full, items: [{ title: 'Updated lab', due: Date.parse('2099-11-24') }] };
+  await refresh();
+  assert.match(textOf(list), /Updated lab/);
+  assert.equal(nodes.get('#refresh-notice').hidden, true);
+  response = { state: 'sign-in' };
+  await refresh();
+  assert.equal(list.hidden, true);
+  assert.equal(list.children.length, 0);
 });

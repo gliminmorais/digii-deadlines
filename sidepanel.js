@@ -3,6 +3,7 @@ const campusUrl = 'https://snuc.digiicampus.com/';
 const status = document.querySelector('#status');
 const syncTime = document.querySelector('#sync-time');
 const syncSummary = document.querySelector('#sync-summary');
+const refreshNotice = document.querySelector('#refresh-notice');
 const syncStorageKey = 'lastSuccessfulDigiiSync';
 const list = document.querySelector('#deadlines');
 const historyList = document.querySelector('#history');
@@ -25,6 +26,8 @@ let loadVersion = 0;
 let past = false;
 let openSubject;
 let lastSuccessfulSync = 0;
+const loadedViews = new Map();
+let visibleResult;
 
 function showLastSync(timestamp) {
   const now = Date.now();
@@ -231,80 +234,109 @@ function selectView(showPast) {
   upcomingView.setAttribute('aria-pressed', String(!past));
   pastView.setAttribute('aria-pressed', String(past));
   pastView.parentElement?.setAttribute('data-view', past ? 'past' : 'upcoming');
+  load(false, past ? 1 : -1);
+}
+
+function showResult(result, showPast, slide = 0) {
+  if (result && result === visibleResult) return;
+  visibleResult = result;
+  status.removeAttribute('data-empty');
+  status.removeAttribute('title');
+  status.removeAttribute('data-compact');
   list.hidden = true;
   historyList.hidden = true;
-  load(false, past ? 1 : -1);
+  emptyUpcoming.hidden = true;
+  if (!result) {
+    list.replaceChildren();
+    historyList.replaceChildren();
+    return;
+  }
+  const count = result.items.length;
+  if (!count && !result.failed) {
+    if (result.loaded > 0 && !showPast) emptyUpcoming.hidden = false;
+    else status.setAttribute('data-empty', '');
+  }
+  const kind = showPast ? 'past' : 'upcoming';
+  const summary = count ? count + ' ' + kind + (count === 1 ? ' assignment' : ' assignments') : 'No ' + kind + ' assignments';
+  status.textContent = count ? count + ' ' + kind : summary;
+  status.title = summary + ' · ' + result.loaded + (result.loaded === 1 ? ' course checked' : ' courses checked');
+  status.setAttribute('data-compact', '');
+  if (showPast) renderHistory(result.items);
+  else renderUpcoming(result.items);
+  if (slide && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const content = !emptyUpcoming.hidden ? emptyUpcoming : !count ? status : showPast ? historyList : list;
+    content.animate?.([
+      { transform: 'translateX(' + slide * 22 + 'px)', opacity: .35 },
+      { transform: 'translateX(0)', opacity: 1 }
+    ], { duration: 240, easing: 'cubic-bezier(.2,.75,.25,1)' });
+  }
+}
+
+function showRefreshIssue(message, emptyStatus) {
+  if (!visibleResult && emptyStatus) status.textContent = emptyStatus;
+  refreshNotice.textContent = message;
+  refreshNotice.hidden = false;
 }
 
 async function load(force = false, slide = 0) {
   const version = ++loadVersion;
+  const showPast = past;
+  const loading = showPast ? 'Loading past assignments…' : 'Syncing assignments across your courses…';
   refresh.setAttribute('aria-busy', 'true');
-  status.removeAttribute('data-empty');
-  status.removeAttribute('title');
-  status.removeAttribute('data-compact');
-  emptyUpcoming.hidden = true;
   refresh.disabled = true;
+  refreshNotice.hidden = true;
+  showResult(loadedViews.get(showPast), showPast, slide);
+  if (!visibleResult) status.textContent = loading;
   try {
     const tabs = await extensionApi.tabs.query({ url: campusUrl + '*', currentWindow: true });
     if (version !== loadVersion) return;
     const tab = tabs.find(candidate => candidate.active) ??
       tabs.sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))[0];
-    tabId = tab?.id;
-    list.replaceChildren();
-    list.hidden = true;
-    historyList.replaceChildren();
-    historyList.hidden = true;
+    if (tabId !== tab?.id) {
+      tabId = tab?.id;
+      loadedViews.clear();
+      openSubject = undefined;
+      showResult(undefined, showPast);
+      status.textContent = loading;
+    }
     if (!tab) {
       status.textContent = 'Open DigiiCampus and sign in to sync your courses.';
       return;
     }
 
     let result;
-    status.textContent = past ? 'Loading past assignments…' : 'Syncing assignments across your courses…';
     try {
-      result = await extensionApi.tabs.sendMessage(tabId, { type: 'read-deadlines', refresh: force, past });
+      result = await extensionApi.tabs.sendMessage(tabId, { type: 'read-deadlines', refresh: force, past: showPast });
     } catch {
-      if (version === loadVersion) status.textContent = 'Reload your DigiiCampus tab to start syncing.';
+      if (version === loadVersion) showRefreshIssue('Refresh failed. Try again.', 'Reload your DigiiCampus tab to start syncing.');
       return;
     }
     if (version !== loadVersion) return;
     if (result?.state === 'sign-in') {
+      loadedViews.clear();
+      openSubject = undefined;
+      showResult(undefined, showPast);
       status.textContent = 'Sign in to DigiiCampus, then reopen the dashboard.';
       return;
     }
-    if (result?.state !== 'ready') {
-      status.textContent = 'Couldn’t load your course list. Check your DigiiCampus session and try Refresh.';
+    if (result?.state !== 'ready' || !Array.isArray(result.items)) {
+      showRefreshIssue('Refresh failed. Try again.', 'Couldn’t load your course list.');
+      return;
+    }
+    if (result.failed) {
+      if (!visibleResult && (result.loaded || result.items.length)) {
+        loadedViews.set(showPast, result);
+        showResult(result, showPast, slide);
+      }
+      const unavailable = result.failed + (result.failed === 1 ? ' course unavailable' : ' courses unavailable');
+      showRefreshIssue(unavailable + '. Try again.', 'Couldn’t load assignments for your courses.');
       return;
     }
     showLastSync(result.syncedAt);
-    const count = result.items.length;
-    if (count === 0 && result.failed === 0 && result.loaded > 0 && !past) emptyUpcoming.hidden = false;
-    else if (count === 0 && result.failed === 0) status.setAttribute('data-empty', '');
-    const kind = past ? 'past' : 'upcoming';
-    const summary = count ? count + ' ' + kind + (count === 1 ? ' assignment' : ' assignments') : 'No ' + kind + ' assignments';
-    const coverage = result.failed
-      ? ' · ' + result.failed + (result.failed === 1 ? ' course unavailable' : ' courses unavailable')
-      : ' · ' + result.loaded + (result.loaded === 1 ? ' course checked' : ' courses checked');
-    if (result.failed && !result.loaded && !count) {
-      status.textContent = 'Couldn’t load assignments for your courses. Try Refresh.';
-    } else if (result.failed) {
-      status.textContent = (count ? count + ' ' + kind : summary) + coverage;
-    } else {
-      status.textContent = count ? count + ' ' + kind : summary;
-      status.title = summary + coverage;
-      status.setAttribute('data-compact', '');
-    }
-    if (past) renderHistory(result.items);
-    else renderUpcoming(result.items);
-    if (slide && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const content = !emptyUpcoming.hidden ? emptyUpcoming : count === 0 ? status : past ? historyList : list;
-      content.animate?.([
-        { transform: 'translateX(' + slide * 22 + 'px)', opacity: .35 },
-        { transform: 'translateX(0)', opacity: 1 }
-      ], { duration: 240, easing: 'cubic-bezier(.2,.75,.25,1)' });
-    }
+    loadedViews.set(showPast, result);
+    showResult(result, showPast, slide);
   } catch {
-    if (version === loadVersion) status.textContent = 'Couldn’t read the dashboard. Try refreshing.';
+    if (version === loadVersion) showRefreshIssue('Refresh failed. Try again.', 'Couldn’t read the dashboard.');
   } finally {
     if (version === loadVersion) {
       refresh.removeAttribute('aria-busy');
