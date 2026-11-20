@@ -96,6 +96,24 @@ The launcher builds a local copy on your Mac. An Apple-signed app for public dis
 
 Leave a signed-in SNUC DigiiCampus tab open in the same browser while you use the dashboard. **Refresh** checks the portal again while the current list stays visible. If the refresh fails or some courses could not be loaded, a message beside the last successful sync time tells you to try again. Digii Deadlines makes read-only requests using your current browser session, keeps assignment data in tab memory, and stores the sync timestamp locally in your browser. The assignment fetch has been exercised with simulated portal data. Live behavior still needs verification in an authenticated SNUC session. [Digii API research](https://github.com/Sheikh162/digii-campus-mcp/blob/main/CENSUS.md)
 
+## Demo and architecture
+
+### Watch the public extension in Chrome
+
+[Download the 35-second walkthrough (1080p, 60 fps)](https://github.com/gliminmorais/digii-deadlines/raw/refs/heads/demo-media/docs/digii-deadlines-walkthrough.mp4)
+
+Follow the cursor through Upcoming, Past Assignments, refresh recovery, and the lightbulb theme switch. The walkthrough uses captures of the public v1.6.1 extension running in Chrome with sample assignments, then traces how assignment data reaches the dashboard.
+
+### How it works
+
+![Digii Deadlines data flow. The dashboard requests assignments from a script in the signed-in campus tab. That script reads the campus API and returns normalised assignment records. After a complete sync, the background script saves the sync timestamp locally.](docs/digii-architecture.svg)
+
+1. **Find the DigiiCampus tab.** The dashboard looks for an open campus tab in the current browser window and asks its content script for Upcoming or Past Assignments.
+2. **Read and normalise assignments.** The content script uses the existing campus session to fetch the course list and paginate each course’s assignments. It returns the title, deadline, submission status, published marks when available, and a direct assignment link.
+3. **Render results and preserve the last successful sync.** Assignment data stays in browser memory. After a complete sync, the background script saves the timestamp in local extension storage. If a later refresh fails or returns incomplete results, the dashboard keeps the list already on screen and shows a retry message.
+
+The public extension uses the campus API directly from your browser. It has no separate backend.
+
 ## Build from source
 
 From the repository root, run this with Node.js 22 or newer.
