@@ -22,6 +22,7 @@ const shortDate = new Intl.DateTimeFormat('en-IN', { timeZone, day: 'numeric', m
 const time = new Intl.DateTimeFormat('en-IN', { timeZone, timeStyle: 'short' });
 const clock = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
 let tabId;
+let accountScope;
 let loadVersion = 0;
 let past = false;
 let openSubject;
@@ -294,6 +295,7 @@ async function load(force = false, slide = 0) {
       tabs.sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))[0];
     if (tabId !== tab?.id) {
       tabId = tab?.id;
+      accountScope = undefined;
       loadedViews.clear();
       openSubject = undefined;
       showResult(undefined, showPast);
@@ -312,10 +314,13 @@ async function load(force = false, slide = 0) {
       return;
     }
     if (version !== loadVersion) return;
-    if (result?.state === 'sign-in') {
+    if (result?.state === 'sign-in' || (result?.accountScope && accountScope !== result.accountScope)) {
+      accountScope = result.accountScope;
       loadedViews.clear();
       openSubject = undefined;
       showResult(undefined, showPast);
+    }
+    if (result?.state === 'sign-in') {
       status.textContent = 'Sign in to DigiiCampus, then reopen the dashboard.';
       return;
     }

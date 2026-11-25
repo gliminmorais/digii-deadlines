@@ -154,7 +154,7 @@ test('groups upcoming assignments by IST day and keeps the last full sync during
 });
 
 test('keeps the same assignment cards during an in-progress refresh and a refresh error', async () => {
-  const full = { state: 'ready', loaded: 1, failed: 0, items: [{ title: 'Lab', due: Date.parse('2099-11-23') }] };
+  const full = { state: 'ready', loaded: 1, failed: 0, accountScope: 'same', items: [{ title: 'Lab', due: Date.parse('2099-11-23') }] };
   let response = full;
   const [, list, nodes] = await render([{ id: 3 }], () => response);
   const group = list.children[0];
@@ -165,7 +165,7 @@ test('keeps the same assignment cards during an in-progress refresh and a refres
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(list.hidden, false);
   assert.equal(list.children[0], group);
-  finish({ state: 'error' });
+  finish({ state: 'error', accountScope: 'same' });
   await pending;
   assert.equal(list.children[0], group);
   assert.match(nodes.get('#refresh-notice').textContent, /refresh failed.*try again/i);
@@ -175,6 +175,28 @@ test('keeps the same assignment cards during an in-progress refresh and a refres
   assert.equal(nodes.get('#refresh-notice').hidden, true);
   response = { state: 'sign-in' };
   await refresh();
+  assert.equal(list.hidden, true);
+  assert.equal(list.children.length, 0);
+});
+
+test('clears both cached views when the account changes and the new sync fails', async () => {
+  const due = Date.parse('2099-11-23');
+  let accountScope = 'first';
+  const [, list, nodes] = await render([{ id: 3 }], message => accountScope === 'first'
+    ? { state: 'ready', loaded: 1, failed: 0, accountScope, items: [
+      { title: message.past ? 'Old marks' : 'Old deadline', courseId: '12', due }
+    ] }
+    : { state: 'ready', loaded: 0, failed: 1, accountScope, items: [] });
+  nodes.get('#past-view').listeners.get('click')();
+  await new Promise(setImmediate);
+  const history = nodes.get('#history');
+  assert.match(textOf(history), /Old marks/);
+  accountScope = 'second';
+  await nodes.get('#refresh').listeners.get('click')();
+  assert.equal(history.hidden, true);
+  assert.equal(history.children.length, 0);
+  nodes.get('#upcoming-view').listeners.get('click')();
+  await new Promise(setImmediate);
   assert.equal(list.hidden, true);
   assert.equal(list.children.length, 0);
 });

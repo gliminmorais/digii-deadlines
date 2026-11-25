@@ -5,6 +5,8 @@
   const cacheMs = 2 * 60 * 1000;
   const months = 'jan feb mar apr may jun jul aug sep oct nov dec'.split(' ');
   const collections = new Map();
+  let accountId;
+  let accountScope;
   const upcoming = ['upcomingAssignments', 'totalUpcomingAssignments'];
   const previous = ['previousAssignments', 'totalPreviousAssignments'];
 
@@ -133,9 +135,8 @@
     try {
       const result = await getJson('/rest/classes/v1/classroom', sync);
       if (!Array.isArray(result)) throw new Error('Missing class list');
-      const courses = new Map(result.filter(course => /^\d+$/.test(course?.id))
-        .map(course => [String(course.id), course]));
-      if (result.length && !courses.size) throw new Error('Missing class IDs');
+      const validCourses = result.filter(course => /^\d+$/.test(course?.id));
+      const courses = new Map(validCourses.map(course => [String(course.id), course]));
 
       const items = new Map();
       let failed = 0;
@@ -150,6 +151,7 @@
         }
         if (loaded + failed < courses.size) await new Promise(resolve => setTimeout(resolve, 180));
       }
+      failed += result.length - validCourses.length;
       return { state: 'ready', loaded, failed, items: [...items.values()] };
     } catch {
       return { state: 'error', items: [] };
@@ -158,6 +160,10 @@
 
   function update(force = false, past = false) {
     const user = session();
+    if (accountId !== user?.id) {
+      accountId = user?.id;
+      accountScope = user ? crypto.randomUUID() : undefined;
+    }
     for (const [view, cached] of collections) {
       if (cached.token !== user?.token || cached.id !== user?.id) {
         cached.controller.abort();
@@ -167,20 +173,20 @@
     if (!user) return;
     const active = collections.get(past);
     if (active?.pending) return active;
-    if (active && !force && Date.now() - active.finished < cacheMs) return active;
+    if (active?.finished && !force && Date.now() - active.finished < cacheMs) return active;
 
-    const sync = { ...user, past, pending: true, controller: new AbortController() };
+    const sync = { ...user, accountScope, past, pending: true, controller: new AbortController() };
     collections.set(past, sync);
     sync.result = loadAll(sync).then(result => {
       const current = session();
       if (result.state !== 'ready' || result.failed || sync.controller.signal.aborted ||
           collections.get(past) !== sync || current?.token !== sync.token || current?.id !== sync.id) return result;
       const syncedAt = Date.now();
+      sync.finished = syncedAt;
       void extensionApi.runtime.sendMessage?.({ type: 'digii-full-sync', syncedAt })?.catch(() => {});
       return { ...result, syncedAt };
     }).finally(() => {
       sync.pending = false;
-      sync.finished = Date.now();
     });
     return sync;
   }
@@ -195,6 +201,7 @@
     }
     return {
       ...result,
+      accountScope: sync.accountScope,
       items: result.items.filter(item => past || item.due >= Date.now())
         .sort((a, b) => (past ? (b.due ?? -Infinity) - (a.due ?? -Infinity) : a.due - b.due) ||
           a.title.localeCompare(b.title))

@@ -13,7 +13,8 @@ function setup(respond, initialSession = { token }) {
   const calls = [];
   const messages = [];
   runInNewContext(script(), {
-    Date, URL, atob, AbortSignal, AbortController, location: { origin },
+    Date, URL, atob, AbortSignal, AbortController, crypto: { randomUUID: require('node:crypto').randomUUID },
+    location: { origin },
     localStorage: { getItem: () => JSON.stringify(session) },
     setInterval: callback => { tick = callback; },
     setTimeout: (callback, milliseconds) => milliseconds === 180 ? setImmediate(callback) : setTimeout(callback, milliseconds),
@@ -107,9 +108,41 @@ test('reports partial coverage and refreshes it; clears results on sign-out', as
   assert.equal(partial.syncedAt, undefined);
   assert.equal(app.messages.length, 0);
   blocked = false;
-  assert.equal((await app.read(true)).loaded, 2);
+  assert.equal((await app.read()).loaded, 2);
   app.setSession(null);
   assert.equal((await app.read()).state, 'sign-in');
+});
+
+test('retries a failed course-list request without a forced refresh', async () => {
+  let blocked = true;
+  const app = setup(() => blocked ? null : []);
+  assert.equal((await app.read()).state, 'error');
+  blocked = false;
+  assert.equal((await app.read()).state, 'ready');
+  assert.equal(app.calls.length, 2);
+});
+
+test('reports a course with a missing ID as unavailable and still loads valid courses', async () => {
+  const app = setup(url => url.pathname.endsWith('/classroom')
+    ? [{ id: 12 }, { courseName: 'Missing ID' }]
+    : upcoming([row(1, 'Lab', '2099-11-25')], 1));
+  const result = await app.read();
+  assert.equal(result.loaded, 1);
+  assert.equal(result.failed, 1);
+  assert.equal(result.items[0].title, 'Lab');
+  assert.equal(result.syncedAt, undefined);
+  assert.equal(app.messages.length, 0);
+});
+
+test('uses one opaque scope for both views and changes it when the account changes', async () => {
+  const app = setup(() => [], { token, ukid: 34 });
+  const first = (await app.read()).accountScope;
+  assert.equal(typeof first, 'string');
+  assert.equal((await app.read(false, true)).accountScope, first);
+  app.setSession({ token, ukid: 35 });
+  const second = (await app.read()).accountScope;
+  assert.equal(typeof second, 'string');
+  assert.notEqual(second, first);
 });
 
 test('starts automatically if the user signs in after opening DigiiCampus', async () => {
