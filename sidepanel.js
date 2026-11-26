@@ -14,6 +14,8 @@ const refresh = document.querySelector('#refresh');
 const refreshIcon = document.querySelector('.refresh-icon');
 const campus = document.querySelector('#campus');
 const theme = document.querySelector('#theme');
+const signedInAccount = document.querySelector('#signed-in-account');
+const accountNameLabel = document.querySelector('#account-name');
 const timeZone = 'Asia/Kolkata';
 const month = new Intl.DateTimeFormat('en-IN', { timeZone, month: 'short' });
 const day = new Intl.DateTimeFormat('en-IN', { timeZone, day: 'numeric' });
@@ -279,6 +281,12 @@ function showRefreshIssue(message, emptyStatus) {
   refreshNotice.hidden = false;
 }
 
+function showAccountName(name) {
+  signedInAccount.hidden = !name;
+  accountNameLabel.textContent = name || '';
+  signedInAccount.title = name ? 'Signed in as ' + name : '';
+}
+
 async function load(force = false, slide = 0) {
   const version = ++loadVersion;
   const showPast = past;
@@ -296,6 +304,7 @@ async function load(force = false, slide = 0) {
     if (tabId !== tab?.id) {
       tabId = tab?.id;
       accountScope = undefined;
+      showAccountName();
       loadedViews.clear();
       openSubject = undefined;
       showResult(undefined, showPast);
@@ -320,6 +329,7 @@ async function load(force = false, slide = 0) {
       openSubject = undefined;
       showResult(undefined, showPast);
     }
+    if (result?.state === 'sign-in' || result?.accountScope) showAccountName(result.accountName);
     if (result?.state === 'sign-in') {
       status.textContent = 'Sign in to DigiiCampus, then reopen the dashboard.';
       return;

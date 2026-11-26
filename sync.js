@@ -7,6 +7,7 @@
   const collections = new Map();
   let accountId;
   let accountScope;
+  let cachedAccountName;
   const upcoming = ['upcomingAssignments', 'totalUpcomingAssignments'];
   const previous = ['previousAssignments', 'totalPreviousAssignments'];
 
@@ -20,19 +21,23 @@
         const claims = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
         id = claims.ukid;
       }
-      if (/^\d+$/.test(id)) return { token, id: String(id) };
+      if (/^\d+$/.test(id)) return { token, id: String(id), name: cleanName(user.name) };
     } catch {
       // The portal has not established a usable session yet.
     }
   }
 
-  async function getJson(path, sync) {
+  function cleanName(value) {
+    return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : '';
+  }
+
+  async function getJson(path, sync, timeoutMs = 12_000) {
     const signal = sync.controller.signal;
     const request = new AbortController();
     const cancel = () => request.abort();
     if (signal.aborted) cancel();
     signal.addEventListener('abort', cancel, { once: true });
-    const timeout = setTimeout(cancel, 12_000);
+    const timeout = setTimeout(cancel, timeoutMs);
     try {
       const response = await fetch(origin + path, {
         headers: { 'Auth-Token': sync.token, Accept: 'application/json' },
@@ -46,6 +51,19 @@
     } finally {
       clearTimeout(timeout);
       signal.removeEventListener('abort', cancel);
+    }
+  }
+
+  async function readAccountName(sync) {
+    if (sync.name || cachedAccountName) return sync.name || cachedAccountName;
+    try {
+      const profile = await getJson('/api/userManagement/basicDetails', sync, 2_000);
+      if (String(profile?.ukid) !== sync.id || accountScope !== sync.accountScope ||
+          sync.controller.signal.aborted) return '';
+      cachedAccountName = cleanName(profile.name);
+      return cachedAccountName;
+    } catch {
+      return '';
     }
   }
 
@@ -163,6 +181,7 @@
     if (accountId !== user?.id) {
       accountId = user?.id;
       accountScope = user ? crypto.randomUUID() : undefined;
+      cachedAccountName = undefined;
     }
     for (const [view, cached] of collections) {
       if (cached.token !== user?.token || cached.id !== user?.id) {
@@ -194,7 +213,7 @@
   async function read(force, past) {
     const sync = update(force, past);
     if (!sync) return { state: 'sign-in', items: [] };
-    const result = await sync.result;
+    const [result, accountName] = await Promise.all([sync.result, readAccountName(sync)]);
     const current = session();
     if (collections.get(past) !== sync || current?.token !== sync.token || current.id !== sync.id) {
       return { state: 'sign-in', items: [] };
@@ -202,6 +221,7 @@
     return {
       ...result,
       accountScope: sync.accountScope,
+      accountName,
       items: result.items.filter(item => past || item.due >= Date.now())
         .sort((a, b) => (past ? (b.due ?? -Infinity) - (a.due ?? -Infinity) : a.due - b.due) ||
           a.title.localeCompare(b.title))

@@ -7,7 +7,7 @@ const script = () => readFileSync(join(__dirname, '../sync.js'), 'utf8');
 const origin = 'https://snuc.digiicampus.com';
 const token = 'header.' + Buffer.from('{"ukid":34}').toString('base64url') + '.signature';
 
-function setup(respond, initialSession = { token }) {
+function setup(respond, initialSession = { token, name: 'Ananya Rao' }) {
   let listener, tick;
   let session = initialSession;
   const calls = [];
@@ -135,21 +135,37 @@ test('reports a course with a missing ID as unavailable and still loads valid co
 });
 
 test('uses one opaque scope for both views and changes it when the account changes', async () => {
-  const app = setup(() => [], { token, ukid: 34 });
+  const app = setup(() => [], { token, ukid: 34, name: 'Ananya Rao' });
   const first = (await app.read()).accountScope;
   assert.equal(typeof first, 'string');
   assert.equal((await app.read(false, true)).accountScope, first);
-  app.setSession({ token, ukid: 35 });
+  app.setSession({ token, ukid: 35, name: 'Asha Menon' });
   const second = (await app.read()).accountScope;
   assert.equal(typeof second, 'string');
   assert.notEqual(second, first);
+});
+
+test('reads only the account name from a matching profile and clears it on a switch', async () => {
+  let profile = { ukid: 34, name: '  Ananya   Rao ', email: 'hidden@example.com' };
+  const app = setup(url => url.pathname.endsWith('/basicDetails') ? profile : [], { token, ukid: 34 });
+  const result = await app.read();
+  assert.equal(result.accountName, 'Ananya Rao');
+  assert.ok(!JSON.stringify(result).includes(profile.email));
+  await app.read(false, true);
+  assert.equal(app.calls.filter(path => path.endsWith('/basicDetails')).length, 1);
+  app.setSession({ token, ukid: 35 });
+  assert.equal((await app.read()).accountName, '');
+  profile = null;
+  assert.equal((await app.read()).state, 'ready');
+  app.setSession({ token, ukid: 35, name: 'Asha Menon' });
+  assert.equal((await app.read(true)).accountName, 'Asha Menon');
 });
 
 test('starts automatically if the user signs in after opening DigiiCampus', async () => {
   const app = setup(() => [], null);
   assert.equal((await app.read()).state, 'sign-in');
   assert.equal(app.calls.length, 0);
-  app.setSession({ token });
+  app.setSession({ token, name: 'Ananya Rao' });
   assert.equal((await app.read()).state, 'ready');
   assert.equal(app.calls.length, 1);
 });

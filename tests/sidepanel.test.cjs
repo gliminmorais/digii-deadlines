@@ -25,7 +25,7 @@ function textOf(node) {
 
 async function render(tabs, response, update, now = Date.now()) {
   const nodes = new Map(['status', 'sync-time', 'sync-summary', 'refresh-notice', 'deadlines', 'refresh', 'campus',
-    'history', 'upcoming-view', 'past-view', 'empty-upcoming']
+    'history', 'upcoming-view', 'past-view', 'empty-upcoming', 'signed-in-account', 'account-name']
     .map(id => ['#' + id, new Element()]));
   runInNewContext(script, {
     Date: class extends Date { static now() { return now; } },
@@ -199,4 +199,24 @@ test('clears both cached views when the account changes and the new sync fails',
   await new Promise(setImmediate);
   assert.equal(list.hidden, true);
   assert.equal(list.children.length, 0);
+});
+
+test('shows the full account name in the tooltip and replaces it on an account switch', async () => {
+  const longName = 'Ananya Devika Lakshmi Narayanan Subramanian Rao';
+  let response = { state: 'ready', loaded: 1, failed: 0, items: [], accountScope: 'one', accountName: longName };
+  const [, , nodes] = await render([{ id: 3 }], () => response);
+  const label = nodes.get('#signed-in-account');
+  const name = nodes.get('#account-name');
+  const refresh = nodes.get('#refresh').listeners.get('click');
+  assert.equal(label.hidden, false);
+  assert.equal(name.textContent, longName);
+  assert.equal(label.title, 'Signed in as ' + longName);
+  response = { state: 'error', accountScope: 'two', accountName: 'Asha Menon' };
+  await refresh();
+  assert.equal(name.textContent, 'Asha Menon');
+  response = { state: 'sign-in' };
+  await refresh();
+  assert.equal(label.hidden, true);
+  assert.equal(name.textContent, '');
+  assert.equal(label.title, '');
 });

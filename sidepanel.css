@@ -11,8 +11,24 @@ header {
 }
 h1 { margin: 0; font-size: 24px; line-height: 1.15; font-weight: 750; letter-spacing: -.035em; }
 .heading {
+  min-width: 0;
   -webkit-user-select: none;
   user-select: none;
+}
+.signed-in-account {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.signed-in-account svg { flex: none; }
+.signed-in-account span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 button { color: inherit; font: inherit; cursor: pointer; }
 #refresh {
@@ -279,7 +295,7 @@ footer > :last-child { margin-inline-start: auto; }
   --pop: #a9c7f5;
   --pointer-glow: rgb(169 199 245 / .19);
 }
-.header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
+.header-actions { display: flex; flex: none; align-items: center; gap: 6px; }
 #theme {
   display: grid;
   place-items: center;
